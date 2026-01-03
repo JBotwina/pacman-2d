@@ -1,35 +1,79 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useCallback } from 'react';
+import { useGameLoop } from './hooks/useGameLoop';
+import {
+  createInitialState,
+  updateGameState,
+  startGame,
+  pauseGame,
+  resumeGame,
+  resetGame,
+  GameStatus,
+} from './game/GameState';
+import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [gameState, setGameState] = useState(createInitialState);
+
+  const handleUpdate = useCallback((deltaTime) => {
+    setGameState((state) => updateGameState(state, deltaTime));
+  }, []);
+
+  const isLoopRunning = gameState.status === GameStatus.RUNNING;
+  useGameLoop(handleUpdate, isLoopRunning);
+
+  const handleStart = () => {
+    setGameState((state) => startGame(state));
+  };
+
+  const handlePause = () => {
+    setGameState((state) => pauseGame(state));
+  };
+
+  const handleResume = () => {
+    setGameState((state) => resumeGame(state));
+  };
+
+  const handleReset = () => {
+    setGameState(resetGame());
+  };
+
+  const fps = gameState.elapsedTime > 0
+    ? Math.round((gameState.frameCount / gameState.elapsedTime) * 1000)
+    : 0;
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="game-container">
+      <h1>Pacman 2D</h1>
+
+      <div className="game-stats">
+        <div>Status: {gameState.status}</div>
+        <div>Score: {gameState.score}</div>
+        <div>Lives: {gameState.lives}</div>
+        <div>Level: {gameState.level}</div>
+        <div>Time: {(gameState.elapsedTime / 1000).toFixed(1)}s</div>
+        <div>Frames: {gameState.frameCount}</div>
+        <div>FPS: {fps}</div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
+
+      <div className="game-controls">
+        {gameState.status === GameStatus.IDLE && (
+          <button onClick={handleStart}>Start Game</button>
+        )}
+        {gameState.status === GameStatus.RUNNING && (
+          <button onClick={handlePause}>Pause</button>
+        )}
+        {gameState.status === GameStatus.PAUSED && (
+          <button onClick={handleResume}>Resume</button>
+        )}
+        <button onClick={handleReset}>Reset</button>
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+
+      <div className="game-canvas-placeholder">
+        {/* Canvas for game rendering will go here */}
+        <p>Game canvas placeholder</p>
+      </div>
+    </div>
+  );
 }
 
-export default App
+export default App;
