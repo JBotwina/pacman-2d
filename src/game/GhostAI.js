@@ -564,3 +564,36 @@ export function endFrightenedMode(ghosts) {
 export function resetGhosts() {
   return createAllGhosts();
 }
+
+/**
+ * Checks for collision between player and any ghost.
+ * @param {object} ghosts - All ghost states
+ * @param {number} playerX - Player X position
+ * @param {number} playerY - Player Y position
+ * @param {number} collisionRadius - Collision detection radius (default ~60% of tile)
+ * @returns {object} { collision: boolean, ghostType: string|null, canEat: boolean }
+ */
+export function checkGhostCollision(ghosts, playerX, playerY, collisionRadius = TILE_SIZE * 0.6) {
+  for (const type of Object.keys(ghosts)) {
+    const ghost = ghosts[type];
+
+    // Skip ghosts in house or already eaten
+    if (ghost.mode === GhostMode.IN_HOUSE || ghost.mode === GhostMode.EATEN) {
+      continue;
+    }
+
+    const dx = ghost.x - playerX;
+    const dy = ghost.y - playerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance < collisionRadius) {
+      return {
+        collision: true,
+        ghostType: type,
+        canEat: ghost.mode === GhostMode.FRIGHTENED,
+      };
+    }
+  }
+
+  return { collision: false, ghostType: null, canEat: false };
+}

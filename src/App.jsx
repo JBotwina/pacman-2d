@@ -277,24 +277,44 @@ function App() {
     // Draw ghosts with neon glow
     for (const ghostType of Object.keys(gameState.ghosts)) {
       const ghost = gameState.ghosts[ghostType];
+      const gx = ghost.x;
+      const gy = ghost.y;
+      const size = TILE_SIZE / 2 - 2;
 
-      // Skip eaten ghosts (they're respawning)
-      if (ghost.mode === GhostMode.EATEN) {
+      // Skip ghosts in house
+      if (ghost.mode === GhostMode.IN_HOUSE) {
         continue;
       }
 
-      // Determine ghost color based on mode
-      let color;
+      // Draw only eyes for eaten ghosts (returning to ghost house)
+      if (ghost.mode === GhostMode.EATEN) {
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.ellipse(gx - size * 0.35, gy - size * 0.3, size * 0.25, size * 0.35, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(gx + size * 0.35, gy - size * 0.3, size * 0.25, size * 0.35, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1a1aff';
+        ctx.beginPath();
+        ctx.ellipse(gx - size * 0.3, gy - size * 0.25, size * 0.12, size * 0.18, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(gx + size * 0.4, gy - size * 0.25, size * 0.12, size * 0.18, 0, 0, Math.PI * 2);
+        ctx.fill();
+        continue;
+      }
+
+      // Determine color based on mode
+      let color = GHOST_COLORS[ghostType] || GHOST_COLORS.blinky;
       if (ghost.mode === GhostMode.FRIGHTENED) {
-        // Flash between white and blue in last 2 seconds
-        const isFlashing = gameState.vulnerabilityTimer <= 2000;
-        if (isFlashing && Math.floor(gameState.elapsedTime / 200) % 2 === 0) {
+        // Flash white/blue in last 2 seconds
+        const flashing = gameState.vulnerabilityTimer < 2000;
+        if (flashing && Math.floor(gameState.elapsedTime / 200) % 2 === 0) {
           color = '#ffffff';
         } else {
           color = FRIGHTENED_COLOR;
         }
-      } else {
-        color = GHOST_COLORS[ghostType] || GHOST_COLORS.blinky;
       }
 
       ctx.shadowColor = color;
@@ -302,16 +322,9 @@ function App() {
       ctx.fillStyle = color;
 
       // Draw ghost body (rounded top, wavy bottom)
-      const gx = ghost.x;
-      const gy = ghost.y;
-      const size = TILE_SIZE / 2 - 2;
-
       ctx.beginPath();
-      // Top arc
       ctx.arc(gx, gy - size * 0.2, size, Math.PI, 0, false);
-      // Right side
       ctx.lineTo(gx + size, gy + size * 0.6);
-      // Wavy bottom
       const waveCount = 3;
       const waveWidth = (size * 2) / waveCount;
       for (let i = 0; i < waveCount; i++) {
@@ -319,12 +332,11 @@ function App() {
         const x2 = gx + size - (i + 1) * waveWidth;
         ctx.quadraticCurveTo(x1, gy + size * 0.3, x2, gy + size * 0.6);
       }
-      // Left side
       ctx.lineTo(gx - size, gy - size * 0.2);
       ctx.fill();
-
-      // Draw eyes (white) - only when not frightened
       ctx.shadowBlur = 0;
+
+      // Draw eyes - normal or frightened face
       if (ghost.mode !== GhostMode.FRIGHTENED) {
         ctx.fillStyle = 'white';
         ctx.beginPath();
@@ -333,14 +345,19 @@ function App() {
         ctx.beginPath();
         ctx.ellipse(gx + size * 0.35, gy - size * 0.3, size * 0.25, size * 0.35, 0, 0, Math.PI * 2);
         ctx.fill();
-
-        // Draw pupils (blue)
         ctx.fillStyle = '#1a1aff';
         ctx.beginPath();
         ctx.ellipse(gx - size * 0.3, gy - size * 0.25, size * 0.12, size * 0.18, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
         ctx.ellipse(gx + size * 0.4, gy - size * 0.25, size * 0.12, size * 0.18, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Frightened face - small dots for eyes, wavy mouth
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(gx - size * 0.3, gy - size * 0.2, 2, 0, Math.PI * 2);
+        ctx.arc(gx + size * 0.3, gy - size * 0.2, 2, 0, Math.PI * 2);
         ctx.fill();
       }
     }

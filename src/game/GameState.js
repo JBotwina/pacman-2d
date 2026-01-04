@@ -15,6 +15,9 @@ import {
   updateAllGhosts,
   setGhostMode,
   endFrightenedMode,
+  markGhostEaten,
+  checkGhostCollision,
+  resetGhosts,
   GhostMode,
   Direction,
   GHOST_START_POSITIONS,
@@ -221,39 +224,41 @@ export function updateGameState(state, deltaTime) {
   }
   updatedGhosts = movedGhosts;
 
-  // Check for player-ghost collisions
-  for (const ghostType of GHOST_NAMES) {
-    const ghost = updatedGhosts[ghostType];
-    if (!ghost || ghost.mode === GhostMode.EATEN) {
-      continue;
-    }
+  // Check player-ghost collision
+  let lives = state.lives;
+  let finalScore = newScore;
+  let finalStatus = newStatus;
+  let player = state.player;
 
-    // Check collision
-    const playerSize = TILE_SIZE - 4;
-    const collisionDistance = (playerSize + GHOST_SIZE) / 2;
-    const dx = state.player.x - ghost.x;
-    const dy = state.player.y - ghost.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+  const collision = checkGhostCollision(updatedGhosts, state.player.x, state.player.y);
 
-    if (distance < collisionDistance) {
-      if (ghost.mode === GhostMode.FRIGHTENED) {
-        // Player eats the ghost - award escalating points
-        const ghostIndex = Math.min(ghostsEatenDuringFrightened, GHOST_EAT_POINTS.length - 1);
-        newScore += GHOST_EAT_POINTS[ghostIndex];
-        ghostsEatenDuringFrightened++;
-
-        // Mark ghost as eaten and start respawn timer
-        updatedGhosts = {
-          ...updatedGhosts,
-          [ghostType]: {
-            ...ghost,
-            mode: GhostMode.EATEN,
-          },
+  if (collision.collision) {
+    if (collision.canEat) {
+      // Player eats frightened ghost
+      updatedGhosts = markGhostEaten(updatedGhosts, collision.ghostType);
+      const pointIndex = Math.min(ghostsEatenDuringFrightened, GHOST_EAT_POINTS.length - 1);
+      finalScore += GHOST_EAT_POINTS[pointIndex];
+      ghostsEatenDuringFrightened += 1;
+      // Start respawn timer for eaten ghost
+      ghostRespawnTimers[collision.ghostType] = GHOST_RESPAWN_DELAY;
+    } else {
+      // Ghost catches player - lose a life
+      lives -= 1;
+      if (lives <= 0) {
+        finalStatus = GameStatus.GAME_OVER;
+      } else {
+        // Reset positions
+        player = {
+          x: TILE_SIZE * 1.5,
+          y: TILE_SIZE * 1.5,
+          direction: Direction.RIGHT,
         };
-        ghostRespawnTimers[ghostType] = GHOST_RESPAWN_DELAY;
+        updatedGhosts = resetGhosts();
+        ghostsVulnerable = false;
+        vulnerabilityTimer = 0;
+        modeTimer = 0;
+        globalMode = GhostMode.SCATTER;
       }
-      // Note: When ghosts are not frightened, collision could trigger life loss
-      // For now, we just handle the ghost eating case
     }
   }
 
@@ -267,19 +272,22 @@ export function updateGameState(state, deltaTime) {
   }
 
   // Check for fruit collection
-  if (newFruitState.active && checkFruitCollision(state.player.x, state.player.y, newFruitState)) {
+  if (newFruitState.active && checkFruitCollision(player.x, player.y, newFruitState)) {
     const { newFruitState: collectedState, points } = collectFruit(newFruitState);
     newFruitState = collectedState;
     fruitPoints = points;
   }
+
 
   return {
     ...state,
     elapsedTime: state.elapsedTime + deltaTime,
     frameCount: state.frameCount + 1,
     dots: newDotsState,
-    score: newScore + fruitPoints,
-    status: newStatus,
+    score: finalScore + fruitPoints,
+    status: finalStatus,
+    lives,
+    player,
     ghosts: updatedGhosts,
     globalMode,
     modeTimer,
