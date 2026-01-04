@@ -50,6 +50,13 @@
   font-size: 1.5rem;
   color: #fff;
   text-shadow: 0 0 8px rgba(255, 255, 255, 0.7), 0 0 16px rgba(255, 255, 255, 0.4);
+  transition: transform 0.1s ease-out;
+}
+
+.score-display__score--animating {
+  color: #ffff66;
+  text-shadow: 0 0 10px rgba(255, 255, 100, 0.8), 0 0 20px rgba(255, 255, 100, 0.4);
+  transform: scale(1.05);
 }
 
 .score-display__lives {
