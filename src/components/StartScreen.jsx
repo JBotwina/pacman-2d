@@ -18,22 +18,21 @@ export default function StartScreen({ onStart, gameMode }) {
           <div className="player-controls">
             {isTwoPlayer && <span className="player-label">PLAYER 1</span>}
             <div className="key-group">
-              <span className="key">W</span>
+              <span className="key">E</span>
               <span className="key-desc">Up</span>
             </div>
             <div className="key-group">
-              <span className="key">A</span>
+              <span className="key">S</span>
               <span className="key-desc">Left</span>
             </div>
             <div className="key-group">
-              <span className="key">S</span>
+              <span className="key">D</span>
               <span className="key-desc">Down</span>
             </div>
             <div className="key-group">
-              <span className="key">D</span>
+              <span className="key">F</span>
               <span className="key-desc">Right</span>
             </div>
-            <div className="key-alt">or Arrow Keys</div>
           </div>
 
           {isTwoPlayer && (

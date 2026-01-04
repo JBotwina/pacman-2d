@@ -144,13 +144,13 @@ function App() {
     };
   }, [playerMovement, player2Movement]);
 
-  // Get current input direction from keys for Player 1
+  // Get current input direction from S/D/F/E keys for Player 1
   const getInputDirection = useCallback(() => {
     const keys = keysRef.current;
-    if (keys['ArrowUp'] || keys['w'] || keys['W']) return 'up';
-    if (keys['ArrowDown'] || keys['s'] || keys['S']) return 'down';
-    if (keys['ArrowLeft'] || keys['a'] || keys['A']) return 'left';
-    if (keys['ArrowRight'] || keys['d'] || keys['D']) return 'right';
+    if (keys['e'] || keys['E']) return 'up';
+    if (keys['d'] || keys['D']) return 'down';
+    if (keys['s'] || keys['S']) return 'left';
+    if (keys['f'] || keys['F']) return 'right';
     return null;
   }, []);
 
@@ -546,8 +546,8 @@ function App() {
       {gameState.status === GameStatus.RUNNING && (
         <div className="game-instructions">
           {gameState.gameMode === GameMode.TWO_PLAYER
-            ? 'P1: Arrow Keys or WASD | P2: IJKL | ESC: Pause'
-            : 'Arrow Keys or WASD to move | ESC: Pause'}
+            ? 'P1: SDFE | P2: IJKL | ESC: Pause'
+            : 'SDFE to move | ESC: Pause'}
         </div>
       )}
     </div>
