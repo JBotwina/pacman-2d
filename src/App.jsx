@@ -10,6 +10,7 @@ import {
 } from './game/GameState';
 import { getUncollectedDots, DotType } from './game/Dots';
 import { getFruitData, FRUIT_SPAWN_TILE } from './game/Fruit';
+import { getRandomFruitVisualData } from './game/RandomFruit';
 import ScoreDisplay from './components/ScoreDisplay';
 import ModeSelectScreen from './components/ModeSelectScreen';
 import StartScreen from './components/StartScreen';
@@ -325,6 +326,45 @@ function App() {
       ctx.shadowBlur = 8;
       ctx.fillText(gameState.fruit.lastCollectedPoints.toString(), fruitX, fruitY - 10);
       ctx.shadowBlur = 0;
+    }
+
+    // Draw random fruits (bonus items that spawn at random locations)
+    if (gameState.randomFruits && gameState.randomFruits.activeFruits) {
+      for (const fruit of gameState.randomFruits.activeFruits) {
+        const visualData = getRandomFruitVisualData(fruit);
+
+        // Apply opacity for fade-in/fade-out effects
+        ctx.globalAlpha = visualData.opacity;
+
+        // Draw fruit with glow effect
+        ctx.shadowColor = visualData.color;
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = visualData.color;
+        ctx.beginPath();
+        ctx.arc(visualData.x, visualData.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw a smaller inner circle for visual interest
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = visualData.opacity * 0.4;
+        ctx.beginPath();
+        ctx.arc(visualData.x - 2, visualData.y - 2, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = 1.0;
+        ctx.shadowBlur = 0;
+      }
+
+      // Draw random fruit points popups
+      for (const popup of gameState.randomFruits.pointsPopups) {
+        ctx.font = 'bold 12px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#ffff00';
+        ctx.shadowBlur = 8;
+        ctx.fillText(popup.points.toString(), popup.x, popup.y - 10);
+        ctx.shadowBlur = 0;
+      }
     }
 
     // Draw ghosts with neon glow (hide during death animation)

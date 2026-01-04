@@ -30,6 +30,10 @@ import {
   checkFruitCollision,
   collectFruit,
 } from './Fruit.js';
+import {
+  createInitialRandomFruitState,
+  updateRandomFruits,
+} from './RandomFruit.js';
 
 export const GameStatus = {
   MODE_SELECT: 'mode_select',
@@ -111,8 +115,10 @@ export function createInitialState(highScore = 0) {
     ghostsEatenDuringFrightened: 0,
     // Ghost respawn timers (keyed by ghost type)
     ghostRespawnTimers: {},
-    // Bonus fruit state
+    // Bonus fruit state (fixed position based on dots collected)
     fruit: createInitialFruitState(),
+    // Random fruit state (random spawning bonus items)
+    randomFruits: createInitialRandomFruitState(),
     // Death animation state
     deathAnimationTimer: 0,
   };
@@ -369,8 +375,19 @@ export function updateGameState(state, deltaTime) {
     fruitPoints = points;
   }
 
+  // Handle random fruit spawning and collection
+  const player2PosForFruit = state.gameMode === GameMode.TWO_PLAYER ? state.player2 : null;
+  const { newState: newRandomFruitState, collectedPoints: randomFruitPoints } = updateRandomFruits(
+    state.randomFruits,
+    deltaTime,
+    state.maze,
+    newDotsState,
+    state.player,
+    player2PosForFruit,
+    state.level
+  );
 
-  const finalScoreWithFruit = finalScore + fruitPoints;
+  const finalScoreWithFruit = finalScore + fruitPoints + randomFruitPoints;
   const newHighScore = Math.max(state.highScore, finalScoreWithFruit, finalPlayer2Score);
 
   return {
@@ -393,6 +410,7 @@ export function updateGameState(state, deltaTime) {
     ghostsEatenDuringFrightened,
     ghostRespawnTimers,
     fruit: newFruitState,
+    randomFruits: newRandomFruitState,
     deathAnimationTimer,
   };
 }

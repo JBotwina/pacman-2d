@@ -106,11 +106,11 @@ describe('GhostAI', () => {
 
   describe('MODE_TIMINGS constants', () => {
     it('has scatter timing', () => {
-      expect(MODE_TIMINGS.scatter).toBe(2000);
+      expect(MODE_TIMINGS.scatter).toBe(1500);
     });
 
     it('has chase timing', () => {
-      expect(MODE_TIMINGS.chase).toBe(30000);
+      expect(MODE_TIMINGS.chase).toBe(45000);
     });
   });
 
@@ -171,19 +171,19 @@ describe('GhostAI', () => {
       expect(ghost.releaseDelay).toBe(0);
     });
 
-    it('sets correct release delay for Pinky (2000)', () => {
+    it('sets correct release delay for Pinky (1500)', () => {
       const ghost = createGhost(GhostType.PINKY);
-      expect(ghost.releaseDelay).toBe(2000);
+      expect(ghost.releaseDelay).toBe(1500);
     });
 
-    it('sets correct release delay for Inky (4000)', () => {
+    it('sets correct release delay for Inky (3000)', () => {
       const ghost = createGhost(GhostType.INKY);
-      expect(ghost.releaseDelay).toBe(4000);
+      expect(ghost.releaseDelay).toBe(3000);
     });
 
-    it('sets correct release delay for Clyde (6000)', () => {
+    it('sets correct release delay for Clyde (4500)', () => {
       const ghost = createGhost(GhostType.CLYDE);
-      expect(ghost.releaseDelay).toBe(6000);
+      expect(ghost.releaseDelay).toBe(4500);
     });
 
     it('initializes isExiting to false', () => {
@@ -307,7 +307,7 @@ describe('GhostAI', () => {
   });
 
   describe('calculateClydeTarget', () => {
-    it('targets player when more than 5 tiles away', () => {
+    it('targets player when more than 4 tiles away', () => {
       // Player at (10, 10), Clyde at (2, 10) = 8 tiles away
       const playerPos = { x: TILE_SIZE * 10 + TILE_SIZE / 2, y: TILE_SIZE * 10 + TILE_SIZE / 2 };
       const clydePos = { x: TILE_SIZE * 2 + TILE_SIZE / 2, y: TILE_SIZE * 10 + TILE_SIZE / 2 };
@@ -316,7 +316,7 @@ describe('GhostAI', () => {
       expect(target.tileY).toBe(10);
     });
 
-    it('targets scatter corner when within 5 tiles', () => {
+    it('targets scatter corner when within 4 tiles', () => {
       // Player at (5, 5), Clyde at (4, 5) = 1 tile away
       const playerPos = { x: TILE_SIZE * 5 + TILE_SIZE / 2, y: TILE_SIZE * 5 + TILE_SIZE / 2 };
       const clydePos = { x: TILE_SIZE * 4 + TILE_SIZE / 2, y: TILE_SIZE * 5 + TILE_SIZE / 2 };
@@ -326,12 +326,12 @@ describe('GhostAI', () => {
       expect(target.tileY).toBe(13);
     });
 
-    it('targets player at exactly 5 tiles away', () => {
-      // Player at (10, 10), Clyde at (5, 10) = 5 tiles away (boundary)
+    it('targets scatter corner at exactly 4 tiles away', () => {
+      // Player at (10, 10), Clyde at (6, 10) = 4 tiles away (boundary)
       const playerPos = { x: TILE_SIZE * 10 + TILE_SIZE / 2, y: TILE_SIZE * 10 + TILE_SIZE / 2 };
-      const clydePos = { x: TILE_SIZE * 5 + TILE_SIZE / 2, y: TILE_SIZE * 10 + TILE_SIZE / 2 };
+      const clydePos = { x: TILE_SIZE * 6 + TILE_SIZE / 2, y: TILE_SIZE * 10 + TILE_SIZE / 2 };
       const target = calculateClydeTarget(playerPos, clydePos);
-      // At exactly 5 tiles, should scatter (distance > 5 means chase)
+      // At exactly 4 tiles, should scatter (distance > 4 means chase)
       expect(target.tileX).toBe(1);
       expect(target.tileY).toBe(13);
     });

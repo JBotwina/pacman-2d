@@ -98,30 +98,31 @@ function getNormalizedDirection(dx, dy) {
 
 /**
  * Release delays for each ghost (ms after game start).
+ * Aggressive: faster ghost releases to apply pressure early.
  */
 const GHOST_RELEASE_DELAYS = {
   [GhostType.BLINKY]: 0,      // Blinky starts immediately
-  [GhostType.PINKY]: 2000,    // 2 seconds
-  [GhostType.INKY]: 4000,     // 4 seconds
-  [GhostType.CLYDE]: 6000,    // 6 seconds
+  [GhostType.PINKY]: 1500,    // 1.5 seconds (was 2s)
+  [GhostType.INKY]: 3000,     // 3 seconds (was 4s)
+  [GhostType.CLYDE]: 4500,    // 4.5 seconds (was 6s)
 };
 
 /**
  * Mode timing constants (milliseconds).
- * More aggressive: shorter scatter, longer chase
+ * Very aggressive: minimal scatter, extended chase
  */
 export const MODE_TIMINGS = {
-  scatter: 2000,    // 2 seconds of scatter (short breathing room)
-  chase: 30000,     // 30 seconds of chase (aggressive hunting)
+  scatter: 1500,    // 1.5 seconds of scatter (minimal breathing room)
+  chase: 45000,     // 45 seconds of chase (extended hunting periods)
 };
 
 /**
  * Ghost speed in pixels per millisecond.
- * Slightly faster for more aggressive gameplay.
+ * Aggressive: faster ghosts for more challenging gameplay.
  */
-const GHOST_SPEED = 0.14;
-const FRIGHTENED_SPEED = 0.08;
-const EATEN_SPEED = 0.25;
+const GHOST_SPEED = 0.16;
+const FRIGHTENED_SPEED = 0.07;
+const EATEN_SPEED = 0.28;
 
 /**
  * Speed for bouncing in ghost house (slower than normal movement).
@@ -225,6 +226,24 @@ function getValidDirections(maze, tileX, tileY, currentDir) {
 }
 
 /**
+ * Gets all possible directions from current tile, allowing reverse.
+ * Used when ghost is stuck and needs to find any valid direction.
+ * @param {number[][]} maze - The maze grid
+ * @param {number} tileX - Current tile X
+ * @param {number} tileY - Current tile Y
+ * @returns {object[]} Array of valid directions
+ */
+function getAllValidDirections(maze, tileX, tileY) {
+  const directions = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT];
+
+  return directions.filter(dir => {
+    const nextTileX = tileX + dir.dx;
+    const nextTileY = tileY + dir.dy;
+    return isWalkableTile(maze, nextTileX, nextTileY);
+  });
+}
+
+/**
  * Calculates Blinky's target tile (direct chase).
  * Blinky always targets Pac-Man's current tile.
  * @param {object} playerPos - Player position {x, y}
@@ -295,8 +314,8 @@ export function calculateClydeTarget(playerPos, clydePos) {
     playerTile.tileX, playerTile.tileY
   ));
 
-  // If more than 5 tiles away, chase directly (reduced from 8 for more aggression)
-  if (distance > 5) {
+  // If more than 4 tiles away, chase directly (reduced from 8 for max aggression)
+  if (distance > 4) {
     return playerTile;
   }
 
@@ -485,8 +504,32 @@ export function updateGhost(ghost, maze, player1Pos, player1Dir, player2Pos, pla
       updatedGhost.mode = globalMode;
       updatedGhost.x = exitX;
       updatedGhost.y = exitY;
-      updatedGhost.direction = Direction.UP; // Start moving up out of the gate
       updatedGhost.isExiting = false;
+
+      // Choose a valid direction when exiting (check which directions are walkable)
+      const exitTile = pixelToTile(exitX, exitY);
+      const validExitDirs = getAllValidDirections(maze, exitTile.tileX, exitTile.tileY);
+      if (validExitDirs.length > 0) {
+        // Prefer horizontal movement first (LEFT or RIGHT), then vertical
+        const leftDir = validExitDirs.find(d => d === Direction.LEFT);
+        const rightDir = validExitDirs.find(d => d === Direction.RIGHT);
+        const downDir = validExitDirs.find(d => d === Direction.DOWN);
+        const upDir = validExitDirs.find(d => d === Direction.UP);
+
+        if (leftDir) {
+          updatedGhost.direction = leftDir;
+        } else if (rightDir) {
+          updatedGhost.direction = rightDir;
+        } else if (downDir) {
+          updatedGhost.direction = downDir;
+        } else if (upDir) {
+          updatedGhost.direction = upDir;
+        } else {
+          updatedGhost.direction = validExitDirs[0];
+        }
+      } else {
+        updatedGhost.direction = Direction.LEFT; // Fallback
+      }
     } else {
       // Still waiting - bounce around inside the house (both X and Y) for a larger pen feel
       const moveAmount = IN_HOUSE_SPEED * deltaTime;
@@ -566,6 +609,44 @@ export function updateGhost(ghost, maze, player1Pos, player1Dir, player2Pos, pla
   if (isWalkableTile(maze, newTile.tileX, newTile.tileY)) {
     updatedGhost.x = newX;
     updatedGhost.y = newY;
+  } else {
+    // Ghost is stuck - find a new valid direction immediately
+    // This handles cases where ghost exits house into a wall or gets stuck
+    const currentTile = pixelToTile(updatedGhost.x, updatedGhost.y);
+    const validDirs = getAllValidDirections(maze, currentTile.tileX, currentTile.tileY);
+
+    if (validDirs.length > 0) {
+      // Pick direction closest to target (or random for frightened mode)
+      if (updatedGhost.mode === GhostMode.FRIGHTENED) {
+        updatedGhost.direction = validDirs[Math.floor(Math.random() * validDirs.length)];
+      } else {
+        const targetTile = getGhostTarget(updatedGhost, player1Pos, player1Dir, player2Pos, player2Dir, ghosts);
+        let bestDir = validDirs[0];
+        let bestDist = Infinity;
+
+        for (const dir of validDirs) {
+          const nextTileX = currentTile.tileX + dir.dx;
+          const nextTileY = currentTile.tileY + dir.dy;
+          const dist = (nextTileX - targetTile.tileX) ** 2 + (nextTileY - targetTile.tileY) ** 2;
+
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestDir = dir;
+          }
+        }
+        updatedGhost.direction = bestDir;
+      }
+
+      // Try to move in the new direction
+      const newMoveX = updatedGhost.x + updatedGhost.direction.dx * moveAmount;
+      const newMoveY = updatedGhost.y + updatedGhost.direction.dy * moveAmount;
+      const newMoveTile = pixelToTile(newMoveX, newMoveY);
+
+      if (isWalkableTile(maze, newMoveTile.tileX, newMoveTile.tileY)) {
+        updatedGhost.x = newMoveX;
+        updatedGhost.y = newMoveY;
+      }
+    }
   }
 
   return updatedGhost;
