@@ -12,6 +12,7 @@ import {
   resetGame,
   GameStatus,
   TILE_SIZE,
+  Direction,
 } from './game/GameState';
 import { getUncollectedDots, DotType } from './game/Dots';
 import Player from './components/Player';
@@ -28,6 +29,15 @@ const WALL_COLOR = '#2121de';
 const WALL_GLOW_COLOR = '#4a4aff';
 const DOT_COLOR = '#ffb8ae';
 const POWER_PELLET_COLOR = '#ffb8ae';
+const FRIGHTENED_COLOR = '#2121de'; // Blue color for frightened ghosts
+
+// Ghost colors
+const GHOST_COLORS = {
+  blinky: '#ff0000',
+  pinky: '#ffb8ff',
+  inky: '#00ffff',
+  clyde: '#ffb852',
+};
 
 function App() {
   const [gameState, setGameState] = useState(createInitialState);
@@ -89,8 +99,18 @@ function App() {
       // Update player direction for rendering
       setPlayerDirection(playerState.direction);
 
-      // Update player position in game state
-      state = updatePlayerPosition(state, playerState.x, playerState.y);
+      // Convert string direction to Direction object for ghost AI
+      let directionObj = state.player.direction;
+      switch (playerState.direction) {
+        case 'up': directionObj = Direction.UP; break;
+        case 'down': directionObj = Direction.DOWN; break;
+        case 'left': directionObj = Direction.LEFT; break;
+        case 'right': directionObj = Direction.RIGHT; break;
+        default: break;
+      }
+
+      // Update player position in game state with direction for ghost AI
+      state = updatePlayerPosition(state, playerState.x, playerState.y, directionObj);
 
       // Player 2 movement: I=up, J=left, K=down, L=right
       const keys = keysRef.current;
@@ -168,6 +188,60 @@ function App() {
         ctx.fillStyle = DOT_COLOR;
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Draw ghosts with neon glow
+    for (const ghostType of Object.keys(gameState.ghosts)) {
+      const ghost = gameState.ghosts[ghostType];
+      // Use frightened color if ghosts are vulnerable, otherwise use ghost's color
+      const color = gameState.ghostsVulnerable ? FRIGHTENED_COLOR : (GHOST_COLORS[ghostType] || GHOST_COLORS.blinky);
+
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = color;
+
+      // Draw ghost body (rounded top, wavy bottom)
+      const gx = ghost.x;
+      const gy = ghost.y;
+      const size = TILE_SIZE / 2 - 2;
+
+      ctx.beginPath();
+      // Top arc
+      ctx.arc(gx, gy - size * 0.2, size, Math.PI, 0, false);
+      // Right side
+      ctx.lineTo(gx + size, gy + size * 0.6);
+      // Wavy bottom
+      const waveCount = 3;
+      const waveWidth = (size * 2) / waveCount;
+      for (let i = 0; i < waveCount; i++) {
+        const x1 = gx + size - (i + 0.5) * waveWidth;
+        const x2 = gx + size - (i + 1) * waveWidth;
+        ctx.quadraticCurveTo(x1, gy + size * 0.3, x2, gy + size * 0.6);
+      }
+      // Left side
+      ctx.lineTo(gx - size, gy - size * 0.2);
+      ctx.fill();
+
+      // Draw eyes (white) - only when not frightened
+      ctx.shadowBlur = 0;
+      if (!gameState.ghostsVulnerable) {
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.ellipse(gx - size * 0.35, gy - size * 0.3, size * 0.25, size * 0.35, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(gx + size * 0.35, gy - size * 0.3, size * 0.25, size * 0.35, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw pupils (blue)
+        ctx.fillStyle = '#1a1aff';
+        ctx.beginPath();
+        ctx.ellipse(gx - size * 0.3, gy - size * 0.25, size * 0.12, size * 0.18, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(gx + size * 0.4, gy - size * 0.25, size * 0.12, size * 0.18, 0, 0, Math.PI * 2);
         ctx.fill();
       }
     }

@@ -10,6 +10,13 @@ import {
   allDotsCollected,
   TILE_SIZE,
 } from './Dots.js';
+import {
+  createAllGhosts,
+  updateAllGhosts,
+  setGhostMode,
+  GhostMode,
+  Direction,
+} from './GhostAI.js';
 
 export const GameStatus = {
   IDLE: 'idle',
@@ -42,22 +49,19 @@ export function createInitialState() {
     player: {
       x: TILE_SIZE * 1.5,
       y: TILE_SIZE * 1.5,
+      direction: Direction.RIGHT,
     },
     // Player 2 starts at bottom-right area
     player2: {
       x: TILE_SIZE * 8.5,
       y: TILE_SIZE * 5.5,
     },
-    // Ghost frightened state
-    ghosts: {
-      frightened: false,
-      frightenedTimer: 0,
-      frightenedFlashing: false,
-      ghostsEatenDuringFrightened: 0, // For combo scoring
-    },
-    // Legacy alias for compatibility
+    // Ghosts with AI behaviors
+    ghosts: createAllGhosts(),
+    // Ghost frightened/vulnerable state
     ghostsVulnerable: false,
     vulnerabilityTimer: 0,
+    ghostsEatenDuringFrightened: 0,
   };
 }
 
@@ -81,37 +85,6 @@ export function updateGameState(state, deltaTime) {
     state.player.y
   );
 
-  // Update frightened state
-  let newGhostState = { ...state.ghosts };
-
-  // If power pellet collected, start/reset frightened mode
-  if (powerPelletCollected) {
-    newGhostState = {
-      frightened: true,
-      frightenedTimer: FRIGHTENED_DURATION,
-      frightenedFlashing: false,
-      ghostsEatenDuringFrightened: 0,
-    };
-  } else if (newGhostState.frightened) {
-    // Update frightened timer
-    newGhostState.frightenedTimer = Math.max(0, newGhostState.frightenedTimer - deltaTime);
-
-    // Check if we should start flashing (warning that frightened mode is ending)
-    if (newGhostState.frightenedTimer <= FRIGHTENED_FLASH_TIME && newGhostState.frightenedTimer > 0) {
-      newGhostState.frightenedFlashing = true;
-    }
-
-    // Check if frightened mode has ended
-    if (newGhostState.frightenedTimer <= 0) {
-      newGhostState = {
-        frightened: false,
-        frightenedTimer: 0,
-        frightenedFlashing: false,
-        ghostsEatenDuringFrightened: 0,
-      };
-    }
-  }
-
   const newScore = state.score + totalPoints;
   const newStatus = allDotsCollected(newDotsState)
     ? GameStatus.LEVEL_COMPLETE
@@ -120,18 +93,35 @@ export function updateGameState(state, deltaTime) {
   // Handle ghost vulnerability
   let ghostsVulnerable = state.ghostsVulnerable;
   let vulnerabilityTimer = state.vulnerabilityTimer;
+  let ghostsEatenDuringFrightened = state.ghostsEatenDuringFrightened;
+  let updatedGhosts = state.ghosts;
 
   if (powerPelletCollected) {
     // Start or reset vulnerability timer
     ghostsVulnerable = true;
     vulnerabilityTimer = VULNERABILITY_DURATION;
+    ghostsEatenDuringFrightened = 0;
+    // Set all ghosts to frightened mode
+    updatedGhosts = setGhostMode(state.ghosts, GhostMode.FRIGHTENED);
   } else if (ghostsVulnerable) {
     // Count down vulnerability timer
     vulnerabilityTimer = Math.max(0, vulnerabilityTimer - deltaTime);
     if (vulnerabilityTimer <= 0) {
       ghostsVulnerable = false;
+      ghostsEatenDuringFrightened = 0;
+      // Return ghosts to chase mode
+      updatedGhosts = setGhostMode(state.ghosts, GhostMode.CHASE);
     }
   }
+
+  // Update ghost positions and AI
+  updatedGhosts = updateAllGhosts(
+    updatedGhosts,
+    state.maze,
+    state.player,
+    state.player.direction,
+    deltaTime
+  );
 
   return {
     ...state,
@@ -140,23 +130,29 @@ export function updateGameState(state, deltaTime) {
     dots: newDotsState,
     score: newScore,
     status: newStatus,
-    ghosts: newGhostState,
+    ghosts: updatedGhosts,
     ghostsVulnerable,
     vulnerabilityTimer,
+    ghostsEatenDuringFrightened,
   };
 }
 
 /**
- * Updates player 1 position.
+ * Updates player 1 position and direction.
  * @param {object} state - Current game state
  * @param {number} x - New X position
  * @param {number} y - New Y position
+ * @param {object} direction - Movement direction (optional)
  * @returns {object} - Updated game state
  */
-export function updatePlayerPosition(state, x, y) {
+export function updatePlayerPosition(state, x, y, direction = null) {
   return {
     ...state,
-    player: { x, y },
+    player: {
+      x,
+      y,
+      direction: direction || state.player.direction,
+    },
   };
 }
 
@@ -223,7 +219,7 @@ export function resetGame() {
  * @returns {number} Speed multiplier (1.0 for normal, 0.5 for frightened)
  */
 export function getGhostSpeedMultiplier(state) {
-  return state.ghosts.frightened ? FRIGHTENED_SPEED_MULTIPLIER : 1.0;
+  return state.ghostsVulnerable ? FRIGHTENED_SPEED_MULTIPLIER : 1.0;
 }
 
 /**
@@ -232,16 +228,16 @@ export function getGhostSpeedMultiplier(state) {
  * @returns {boolean} True if ghosts are frightened
  */
 export function areGhostsFrightened(state) {
-  return state.ghosts.frightened;
+  return state.ghostsVulnerable;
 }
 
 /**
  * Checks if ghosts are in the flashing warning state.
  * @param {object} state - Current game state
- * @returns {boolean} True if ghosts are flashing
+ * @returns {boolean} True if ghosts are flashing (last 2 seconds of vulnerability)
  */
 export function areGhostsFlashing(state) {
-  return state.ghosts.frightenedFlashing;
+  return state.ghostsVulnerable && state.vulnerabilityTimer <= FRIGHTENED_FLASH_TIME;
 }
 
 /**
@@ -256,22 +252,19 @@ export const GHOST_EAT_POINTS = [200, 400, 800, 1600];
  * @returns {object} Updated game state with points added
  */
 export function eatGhost(state) {
-  if (!state.ghosts.frightened) {
+  if (!state.ghostsVulnerable) {
     return state;
   }
 
-  const ghostIndex = Math.min(state.ghosts.ghostsEatenDuringFrightened, GHOST_EAT_POINTS.length - 1);
+  const ghostIndex = Math.min(state.ghostsEatenDuringFrightened, GHOST_EAT_POINTS.length - 1);
   const points = GHOST_EAT_POINTS[ghostIndex];
 
   return {
     ...state,
     score: state.score + points,
-    ghosts: {
-      ...state.ghosts,
-      ghostsEatenDuringFrightened: state.ghosts.ghostsEatenDuringFrightened + 1,
-    },
+    ghostsEatenDuringFrightened: state.ghostsEatenDuringFrightened + 1,
   };
 }
 
-// Re-export TILE_SIZE for components
-export { TILE_SIZE };
+// Re-export TILE_SIZE and Direction for components
+export { TILE_SIZE, Direction };
