@@ -17,6 +17,7 @@ import {
   updateDeathAnimation,
   nextLevel as nextLevelPure,
   GameStatus,
+  MAX_LEVEL,
 } from '../game/GameState.js';
 
 // localStorage key for high score persistence
@@ -64,7 +65,9 @@ export const useGameStore = create((set) => ({
   resetGame: () => set((state) => resetGamePure(state.highScore)),
 
   /**
-   * Advances to the next level, resetting maze/dots/ghosts while preserving score/lives.
+   * Advances to the next level.
+   * Resets maze/dots/ghosts/fruit while preserving score/lives/highScore.
+   * If at MAX_LEVEL, sets status to GAME_COMPLETE.
    */
   nextLevel: () => set((state) => nextLevelPure(state)),
 
@@ -121,4 +124,4 @@ export const useGameStore = create((set) => ({
 }));
 
 // Re-export constants for convenience
-export { GameStatus, GameMode } from '../game/GameState.js';
+export { GameStatus, GameMode, MAX_LEVEL } from '../game/GameState.js';

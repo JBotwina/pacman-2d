@@ -3,12 +3,15 @@
  * Displays level completion message and score.
  */
 
-import { useGameStore } from '../store';
+import { useGameStore, MAX_LEVEL } from '../store';
 
 export default function LevelCompleteScreen() {
   const score = useGameStore((state) => state.score);
   const level = useGameStore((state) => state.level);
-  const resetGame = useGameStore((state) => state.resetGame);
+  const nextLevel = useGameStore((state) => state.nextLevel);
+
+  const isLastLevel = level >= MAX_LEVEL;
+  const buttonText = isLastLevel ? 'FINISH GAME' : 'NEXT LEVEL';
 
   return (
     <div className="menu-overlay level-complete-screen">
@@ -21,8 +24,8 @@ export default function LevelCompleteScreen() {
         </div>
       </div>
 
-      <button className="menu-button next-level-button" onClick={resetGame}>
-        NEXT LEVEL
+      <button className="menu-button next-level-button" onClick={nextLevel}>
+        {buttonText}
       </button>
 
       <div className="level-complete-hint">Press ENTER to continue</div>
