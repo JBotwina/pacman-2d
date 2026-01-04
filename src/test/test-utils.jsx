@@ -17,7 +17,8 @@ export { default as userEvent } from '@testing-library/user-event';
  * @param {number} highScore - Optional high score to preserve
  */
 export function resetGameStore(highScore = 0) {
-  useGameStore.setState(createInitialState(highScore), true);
+  // Use false (merge mode) to preserve store actions while resetting state
+  useGameStore.setState(createInitialState(highScore), false);
 }
 
 /**
@@ -46,10 +47,10 @@ export function getGameStoreState() {
  * @returns {object} Render result from testing library
  */
 function customRender(ui, { initialState, highScore = 0, ...renderOptions } = {}) {
-  // Reset store to clean initial state
+  // Reset store to clean initial state (use merge mode to preserve actions)
   const baseState = createInitialState(highScore);
   const finalState = initialState ? { ...baseState, ...initialState } : baseState;
-  useGameStore.setState(finalState, true);
+  useGameStore.setState(finalState, false);
 
   return render(ui, renderOptions);
 }
