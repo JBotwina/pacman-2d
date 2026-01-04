@@ -28,6 +28,7 @@ export const GhostMode = {
   SCATTER: 'scatter',
   FRIGHTENED: 'frightened',
   EATEN: 'eaten',
+  IN_HOUSE: 'in_house',
 };
 
 /**
@@ -63,10 +64,45 @@ export const GHOST_START_POSITIONS = {
 };
 
 /**
+ * Ghost house location and exit point.
+ */
+const GHOST_HOUSE_CENTER = { tileX: 9, tileY: 7 };
+const GHOST_HOUSE_EXIT = { tileX: 9, tileY: 6 };
+
+/**
+ * Release delays for each ghost (ms after game start).
+ */
+const GHOST_RELEASE_DELAYS = {
+  [GhostType.BLINKY]: 0,      // Blinky starts immediately
+  [GhostType.PINKY]: 2000,    // 2 seconds
+  [GhostType.INKY]: 4000,     // 4 seconds
+  [GhostType.CLYDE]: 6000,    // 6 seconds
+};
+
+/**
+ * Mode timing constants (milliseconds).
+ */
+export const MODE_TIMINGS = {
+  scatter: 7000,    // 7 seconds of scatter
+  chase: 20000,     // 20 seconds of chase
+};
+
+/**
  * Ghost speed in pixels per millisecond.
  */
 const GHOST_SPEED = 0.12;
 const FRIGHTENED_SPEED = 0.08;
+const EATEN_SPEED = 0.2;
+
+/**
+ * Converts tile coordinates to pixel coordinates (center of tile).
+ */
+function tileToPixel(tileX, tileY) {
+  return {
+    x: tileX * TILE_SIZE + TILE_SIZE / 2,
+    y: tileY * TILE_SIZE + TILE_SIZE / 2,
+  };
+}
 
 /**
  * Creates a ghost with initial state.
@@ -75,15 +111,19 @@ const FRIGHTENED_SPEED = 0.08;
  */
 export function createGhost(type) {
   const startPos = GHOST_START_POSITIONS[type] || GHOST_START_POSITIONS[GhostType.BLINKY];
+  const releaseDelay = GHOST_RELEASE_DELAYS[type] || 0;
 
   return {
     type,
     x: startPos.x,
     y: startPos.y,
     direction: Direction.LEFT,
-    mode: GhostMode.CHASE,
+    mode: GhostMode.IN_HOUSE,
+    previousMode: GhostMode.SCATTER,
     targetTile: { tileX: 0, tileY: 0 },
     speed: GHOST_SPEED,
+    timeInHouse: 0,
+    releaseDelay,
   };
 }
 
@@ -249,6 +289,11 @@ export function getGhostTarget(ghost, playerPos, playerDir, ghosts) {
     return { tileX: 0, tileY: 0 }; // Ignored in frightened mode
   }
 
+  // Eaten ghosts return to ghost house
+  if (ghost.mode === GhostMode.EATEN) {
+    return GHOST_HOUSE_CENTER;
+  }
+
   // Chase mode - use unique targeting for each ghost
   switch (ghost.type) {
     case GhostType.BLINKY:
@@ -339,42 +384,71 @@ function isAtTileCenter(x, y, threshold = 2) {
  * @param {object} playerDir - Player direction
  * @param {object} ghosts - All ghost states
  * @param {number} deltaTime - Time since last update in ms
+ * @param {string} globalMode - Current global mode (SCATTER or CHASE)
  * @returns {object} Updated ghost state
  */
-export function updateGhost(ghost, maze, playerPos, playerDir, ghosts, deltaTime) {
-  const speed = ghost.mode === GhostMode.FRIGHTENED ? FRIGHTENED_SPEED : ghost.speed;
+export function updateGhost(ghost, maze, playerPos, playerDir, ghosts, deltaTime, globalMode) {
+  let updatedGhost = { ...ghost };
+
+  // Handle ghost house release
+  if (updatedGhost.mode === GhostMode.IN_HOUSE) {
+    updatedGhost.timeInHouse += deltaTime;
+
+    if (updatedGhost.timeInHouse >= updatedGhost.releaseDelay) {
+      // Release ghost from house
+      updatedGhost.mode = globalMode;
+      const exit = tileToPixel(GHOST_HOUSE_EXIT.tileX, GHOST_HOUSE_EXIT.tileY);
+      updatedGhost.x = exit.x;
+      updatedGhost.y = exit.y;
+      updatedGhost.direction = Direction.LEFT;
+    } else {
+      // Still in house, don't move
+      return updatedGhost;
+    }
+  }
+
+  // Handle eaten ghost returning to house
+  if (updatedGhost.mode === GhostMode.EATEN) {
+    const tile = pixelToTile(updatedGhost.x, updatedGhost.y);
+    if (tile.tileX === GHOST_HOUSE_CENTER.tileX && tile.tileY === GHOST_HOUSE_CENTER.tileY) {
+      // Reached house, respawn after short delay
+      updatedGhost.mode = GhostMode.IN_HOUSE;
+      updatedGhost.timeInHouse = updatedGhost.releaseDelay - 1000; // Quick respawn
+      return updatedGhost;
+    }
+  }
+
+  // Determine speed based on mode
+  let speed = updatedGhost.speed;
+  if (updatedGhost.mode === GhostMode.FRIGHTENED) {
+    speed = FRIGHTENED_SPEED;
+  } else if (updatedGhost.mode === GhostMode.EATEN) {
+    speed = EATEN_SPEED;
+  }
 
   // Check if at tile center (decision point)
-  if (isAtTileCenter(ghost.x, ghost.y)) {
+  if (isAtTileCenter(updatedGhost.x, updatedGhost.y)) {
     // Calculate target and choose direction
-    const targetTile = getGhostTarget(ghost, playerPos, playerDir, ghosts);
-    const newDirection = chooseBestDirection(ghost, maze, targetTile);
+    const targetTile = getGhostTarget(updatedGhost, playerPos, playerDir, ghosts);
+    const newDirection = chooseBestDirection(updatedGhost, maze, targetTile);
 
-    ghost = {
-      ...ghost,
-      direction: newDirection,
-      targetTile,
-    };
+    updatedGhost.direction = newDirection;
+    updatedGhost.targetTile = targetTile;
   }
 
   // Move in current direction
   const moveAmount = speed * deltaTime;
-  let newX = ghost.x + ghost.direction.dx * moveAmount;
-  let newY = ghost.y + ghost.direction.dy * moveAmount;
+  let newX = updatedGhost.x + updatedGhost.direction.dx * moveAmount;
+  let newY = updatedGhost.y + updatedGhost.direction.dy * moveAmount;
 
   // Check if new position would hit a wall
   const newTile = pixelToTile(newX, newY);
-  if (!isWalkableTile(maze, newTile.tileX, newTile.tileY)) {
-    // Stay at current position
-    newX = ghost.x;
-    newY = ghost.y;
+  if (isWalkableTile(maze, newTile.tileX, newTile.tileY)) {
+    updatedGhost.x = newX;
+    updatedGhost.y = newY;
   }
 
-  return {
-    ...ghost,
-    x: newX,
-    y: newY,
-  };
+  return updatedGhost;
 }
 
 /**
@@ -384,9 +458,10 @@ export function updateGhost(ghost, maze, playerPos, playerDir, ghosts, deltaTime
  * @param {object} playerPos - Player position
  * @param {object} playerDir - Player direction
  * @param {number} deltaTime - Time since last update in ms
+ * @param {string} globalMode - Current global mode (SCATTER or CHASE)
  * @returns {object} Updated ghost states
  */
-export function updateAllGhosts(ghosts, maze, playerPos, playerDir, deltaTime) {
+export function updateAllGhosts(ghosts, maze, playerPos, playerDir, deltaTime, globalMode = GhostMode.SCATTER) {
   const updatedGhosts = {};
 
   for (const type of Object.keys(ghosts)) {
@@ -396,7 +471,8 @@ export function updateAllGhosts(ghosts, maze, playerPos, playerDir, deltaTime) {
       playerPos,
       playerDir,
       ghosts,
-      deltaTime
+      deltaTime,
+      globalMode
     );
   }
 
@@ -405,19 +481,77 @@ export function updateAllGhosts(ghosts, maze, playerPos, playerDir, deltaTime) {
 
 /**
  * Sets the mode for all ghosts (chase, scatter, frightened).
+ * Ghosts in house or eaten are not affected.
  * @param {object} ghosts - All ghost states
  * @param {string} mode - New mode
+ * @param {boolean} reverse - Whether ghosts should reverse direction
  * @returns {object} Updated ghost states
  */
-export function setGhostMode(ghosts, mode) {
+export function setGhostMode(ghosts, mode, reverse = false) {
   const updatedGhosts = {};
 
   for (const type of Object.keys(ghosts)) {
+    const ghost = ghosts[type];
+
+    // Don't change mode of ghosts in house or eaten
+    if (ghost.mode === GhostMode.IN_HOUSE || ghost.mode === GhostMode.EATEN) {
+      updatedGhosts[type] = ghost;
+      continue;
+    }
+
     updatedGhosts[type] = {
-      ...ghosts[type],
+      ...ghost,
+      previousMode: ghost.mode,
       mode,
       speed: mode === GhostMode.FRIGHTENED ? FRIGHTENED_SPEED : GHOST_SPEED,
+      direction: reverse ? getOppositeDirection(ghost.direction) : ghost.direction,
     };
+  }
+
+  return updatedGhosts;
+}
+
+/**
+ * Marks a specific ghost as eaten.
+ * @param {object} ghosts - All ghost states
+ * @param {string} ghostType - Type of ghost to mark as eaten
+ * @returns {object} Updated ghost states
+ */
+export function markGhostEaten(ghosts, ghostType) {
+  const ghost = ghosts[ghostType];
+  if (!ghost || ghost.mode !== GhostMode.FRIGHTENED) {
+    return ghosts;
+  }
+
+  return {
+    ...ghosts,
+    [ghostType]: {
+      ...ghost,
+      mode: GhostMode.EATEN,
+    },
+  };
+}
+
+/**
+ * Ends frightened mode for all ghosts, returning them to their previous mode.
+ * @param {object} ghosts - All ghost states
+ * @returns {object} Updated ghost states
+ */
+export function endFrightenedMode(ghosts) {
+  const updatedGhosts = {};
+
+  for (const type of Object.keys(ghosts)) {
+    const ghost = ghosts[type];
+
+    if (ghost.mode === GhostMode.FRIGHTENED) {
+      updatedGhosts[type] = {
+        ...ghost,
+        mode: ghost.previousMode || GhostMode.CHASE,
+        speed: GHOST_SPEED,
+      };
+    } else {
+      updatedGhosts[type] = ghost;
+    }
   }
 
   return updatedGhosts;

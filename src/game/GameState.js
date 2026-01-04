@@ -13,9 +13,12 @@ import {
 import {
   createAllGhosts,
   updateAllGhosts,
+  setGhostMode,
+  endFrightenedMode,
   GhostMode,
   Direction,
   GHOST_START_POSITIONS,
+  MODE_TIMINGS,
 } from './GhostAI.js';
 import {
   createInitialFruitState,
@@ -84,6 +87,9 @@ export function createInitialState() {
     },
     // Ghosts with AI behaviors
     ghosts: createAllGhosts(),
+    // Ghost mode management (scatter/chase switching)
+    globalMode: GhostMode.SCATTER,
+    modeTimer: 0,
     // Ghost frightened/vulnerable state
     ghostsVulnerable: false,
     vulnerabilityTimer: 0,
@@ -126,38 +132,41 @@ export function updateGameState(state, deltaTime) {
   let ghostsEatenDuringFrightened = state.ghostsEatenDuringFrightened;
   let updatedGhosts = state.ghosts;
   let ghostRespawnTimers = { ...state.ghostRespawnTimers };
+  let globalMode = state.globalMode;
+  let modeTimer = state.modeTimer + deltaTime;
 
   if (powerPelletCollected) {
     // Start or reset vulnerability timer
     ghostsVulnerable = true;
     vulnerabilityTimer = VULNERABILITY_DURATION;
     ghostsEatenDuringFrightened = 0;
-    // Set all non-eaten ghosts to frightened mode
-    updatedGhosts = {};
-    for (const ghostType of Object.keys(state.ghosts)) {
-      const ghost = state.ghosts[ghostType];
-      if (ghost.mode !== GhostMode.EATEN) {
-        updatedGhosts[ghostType] = { ...ghost, mode: GhostMode.FRIGHTENED };
-      } else {
-        updatedGhosts[ghostType] = ghost;
-      }
-    }
+    // Set all ghosts to frightened mode with reverse (skips EATEN ghosts)
+    updatedGhosts = setGhostMode(state.ghosts, GhostMode.FRIGHTENED, true);
   } else if (ghostsVulnerable) {
     // Count down vulnerability timer
     vulnerabilityTimer = Math.max(0, vulnerabilityTimer - deltaTime);
     if (vulnerabilityTimer <= 0) {
       ghostsVulnerable = false;
       ghostsEatenDuringFrightened = 0;
-      // Return non-eaten ghosts to chase mode
-      updatedGhosts = {};
-      for (const ghostType of Object.keys(state.ghosts)) {
-        const ghost = state.ghosts[ghostType];
-        if (ghost.mode === GhostMode.FRIGHTENED) {
-          updatedGhosts[ghostType] = { ...ghost, mode: GhostMode.CHASE };
-        } else {
-          updatedGhosts[ghostType] = ghost;
-        }
-      }
+      // Return ghosts to their previous mode (skips EATEN ghosts)
+      updatedGhosts = endFrightenedMode(updatedGhosts);
+    }
+  }
+
+  // Handle scatter/chase mode switching (only when not frightened)
+  if (!ghostsVulnerable) {
+    const currentModeTime = globalMode === GhostMode.SCATTER
+      ? MODE_TIMINGS.scatter
+      : MODE_TIMINGS.chase;
+
+    if (modeTimer >= currentModeTime) {
+      // Switch modes
+      modeTimer = 0;
+      globalMode = globalMode === GhostMode.SCATTER
+        ? GhostMode.CHASE
+        : GhostMode.SCATTER;
+      // Update all active ghosts to new mode with direction reverse
+      updatedGhosts = setGhostMode(updatedGhosts, globalMode, true);
     }
   }
 
@@ -200,7 +209,8 @@ export function updateGameState(state, deltaTime) {
     state.maze,
     state.player,
     state.player.direction,
-    deltaTime
+    deltaTime,
+    globalMode
   );
 
   // Merge moved ghosts with eaten ghosts
@@ -271,6 +281,8 @@ export function updateGameState(state, deltaTime) {
     score: newScore + fruitPoints,
     status: newStatus,
     ghosts: updatedGhosts,
+    globalMode,
+    modeTimer,
     ghostsVulnerable,
     vulnerabilityTimer,
     ghostsEatenDuringFrightened,
@@ -402,5 +414,5 @@ export function eatGhost(state) {
   };
 }
 
-// Re-export TILE_SIZE and Direction for components
+// Re-export TILE_SIZE, Direction, and GhostMode for components
 export { TILE_SIZE, Direction, GhostMode };
