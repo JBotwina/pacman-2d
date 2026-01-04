@@ -17,6 +17,14 @@ import {
   Direction,
   GHOST_START_POSITIONS,
 } from './GhostAI.js';
+import {
+  createInitialFruitState,
+  shouldSpawnFruit,
+  spawnFruit,
+  updateFruitTimer,
+  checkFruitCollision,
+  collectFruit,
+} from './Fruit.js';
 
 export const GameStatus = {
   IDLE: 'idle',
@@ -82,6 +90,8 @@ export function createInitialState() {
     ghostsEatenDuringFrightened: 0,
     // Ghost respawn timers (keyed by ghost type)
     ghostRespawnTimers: {},
+    // Bonus fruit state
+    fruit: createInitialFruitState(),
   };
 }
 
@@ -237,18 +247,35 @@ export function updateGameState(state, deltaTime) {
     }
   }
 
+  // Handle bonus fruit
+  let newFruitState = updateFruitTimer(state.fruit, deltaTime);
+  let fruitPoints = 0;
+
+  // Check if fruit should spawn based on dots collected
+  if (!newFruitState.active && shouldSpawnFruit(newDotsState.collectedDots, newFruitState.spawnCount)) {
+    newFruitState = spawnFruit(newFruitState, state.level);
+  }
+
+  // Check for fruit collection
+  if (newFruitState.active && checkFruitCollision(state.player.x, state.player.y, newFruitState)) {
+    const { newFruitState: collectedState, points } = collectFruit(newFruitState);
+    newFruitState = collectedState;
+    fruitPoints = points;
+  }
+
   return {
     ...state,
     elapsedTime: state.elapsedTime + deltaTime,
     frameCount: state.frameCount + 1,
     dots: newDotsState,
-    score: newScore,
+    score: newScore + fruitPoints,
     status: newStatus,
     ghosts: updatedGhosts,
     ghostsVulnerable,
     vulnerabilityTimer,
     ghostsEatenDuringFrightened,
     ghostRespawnTimers,
+    fruit: newFruitState,
   };
 }
 

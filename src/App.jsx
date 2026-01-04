@@ -17,6 +17,7 @@ import {
   GHOST_EAT_POINTS,
 } from './game/GameState';
 import { getUncollectedDots, DotType } from './game/Dots';
+import { getFruitData, FRUIT_SPAWN_TILE } from './game/Fruit';
 import Player from './components/Player';
 import Ghost from './components/Ghost';
 import ScoreDisplay from './components/ScoreDisplay';
@@ -231,6 +232,46 @@ function App() {
       }
     }
 
+    // Draw bonus fruit if active
+    if (gameState.fruit.active) {
+      const fruitData = getFruitData(gameState.fruit.type);
+      if (fruitData) {
+        const fruitX = gameState.fruit.x;
+        const fruitY = gameState.fruit.y;
+
+        // Draw fruit with glow effect
+        ctx.shadowColor = fruitData.color;
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = fruitData.color;
+        ctx.beginPath();
+        ctx.arc(fruitX, fruitY, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw a smaller inner circle for visual interest
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.4;
+        ctx.beginPath();
+        ctx.arc(fruitX - 2, fruitY - 2, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // Draw collected fruit points popup
+    if (gameState.fruit.showPointsTimer > 0) {
+      const fruitX = FRUIT_SPAWN_TILE.x * TILE_SIZE + TILE_SIZE / 2;
+      const fruitY = FRUIT_SPAWN_TILE.y * TILE_SIZE + TILE_SIZE / 2;
+
+      ctx.font = 'bold 12px Arial';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = '#ffff00';
+      ctx.shadowBlur = 8;
+      ctx.fillText(gameState.fruit.lastCollectedPoints.toString(), fruitX, fruitY - 10);
+      ctx.shadowBlur = 0;
+    }
+
     // Draw ghosts with neon glow
     for (const ghostType of Object.keys(gameState.ghosts)) {
       const ghost = gameState.ghosts[ghostType];
@@ -301,6 +342,7 @@ function App() {
         ctx.fill();
       }
     }
+
 
     // Draw Player 1 (Pacman) with yellow glow and mouth
     ctx.shadowColor = '#ffff00';
