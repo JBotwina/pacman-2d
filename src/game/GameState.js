@@ -88,10 +88,10 @@ export function createInitialState() {
     frameCount: 0,
     maze,
     dots: dotsState,
-    // Player 1 starts at tile (1, 1) - first open space
+    // Player 1 starts at tile (2, 4) - avoids power pellet at (1,1)
     player: {
-      x: TILE_SIZE * 1.5,
-      y: TILE_SIZE * 1.5,
+      x: TILE_SIZE * 2.5,
+      y: TILE_SIZE * 4.5,
       direction: Direction.RIGHT,
     },
     // Player 2 starts at bottom-right area
@@ -143,14 +143,14 @@ export function updateDeathAnimation(state, deltaTime) {
         deathAnimationTimer: 0,
       };
     } else {
-      // Respawn player
+      // Respawn player at tile (2, 4) - avoids power pellet at (1,1)
       return {
         ...state,
         status: GameStatus.RUNNING,
         deathAnimationTimer: 0,
         player: {
-          x: TILE_SIZE * 1.5,
-          y: TILE_SIZE * 1.5,
+          x: TILE_SIZE * 2.5,
+          y: TILE_SIZE * 4.5,
           direction: Direction.RIGHT,
         },
         ghosts: resetGhosts(),
