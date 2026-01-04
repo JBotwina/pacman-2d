@@ -4,6 +4,7 @@ import {
   createInitialState,
   updateGameState,
   updatePlayerPosition,
+  updatePlayer2Position,
   startGame,
   pauseGame,
   resumeGame,
@@ -70,7 +71,7 @@ function App() {
       if (keys['ArrowLeft'] || keys['a'] || keys['A']) dx -= 1;
       if (keys['ArrowRight'] || keys['d'] || keys['D']) dx += 1;
 
-      // Apply movement with proper collision detection
+      // Apply movement for Player 1 with collision detection
       if (dx !== 0 || dy !== 0) {
         const speed = PLAYER_SPEED * deltaTime;
         const targetX = state.player.x + dx * speed;
@@ -90,6 +91,40 @@ function App() {
         const clamped = clampToMazeBounds(state.maze, resolved.x, resolved.y, PLAYER_SIZE);
 
         state = updatePlayerPosition(state, clamped.x, clamped.y);
+      }
+
+      // Player 2 movement: I=up, J=left, K=down, L=right
+      let dx2 = 0;
+      let dy2 = 0;
+
+      if (keys['i'] || keys['I']) dy2 -= 1;
+      if (keys['k'] || keys['K']) dy2 += 1;
+      if (keys['j'] || keys['J']) dx2 -= 1;
+      if (keys['l'] || keys['L']) dx2 += 1;
+
+      // Apply movement for Player 2
+      if (dx2 !== 0 || dy2 !== 0) {
+        const speed = PLAYER_SPEED * deltaTime;
+        let newX2 = state.player2.x + dx2 * speed;
+        let newY2 = state.player2.y + dy2 * speed;
+
+        // Clamp to canvas bounds
+        newX2 = Math.max(TILE_SIZE, Math.min(CANVAS_WIDTH - TILE_SIZE, newX2));
+        newY2 = Math.max(TILE_SIZE, Math.min(CANVAS_HEIGHT - TILE_SIZE, newY2));
+
+        // Check wall collision
+        const tileX2 = Math.floor(newX2 / TILE_SIZE);
+        const tileY2 = Math.floor(newY2 / TILE_SIZE);
+
+        if (
+          tileY2 >= 0 &&
+          tileY2 < state.maze.length &&
+          tileX2 >= 0 &&
+          tileX2 < state.maze[0].length &&
+          state.maze[tileY2][tileX2] !== 1
+        ) {
+          state = updatePlayer2Position(state, newX2, newY2);
+        }
       }
 
       return updateGameState(state, deltaTime);
@@ -137,12 +172,21 @@ function App() {
       }
     }
 
-    // Draw player (Pacman) with glow
+    // Draw Player 1 (Pacman) with yellow glow
     ctx.shadowColor = '#ffff00';
     ctx.shadowBlur = 15;
     ctx.fillStyle = '#ffff00';
     ctx.beginPath();
     ctx.arc(gameState.player.x, gameState.player.y, TILE_SIZE / 2 - 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Draw Player 2 with cyan glow
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 15;
+    ctx.fillStyle = '#00ffff';
+    ctx.beginPath();
+    ctx.arc(gameState.player2.x, gameState.player2.y, TILE_SIZE / 2 - 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
   }, [gameState]);
@@ -211,7 +255,7 @@ function App() {
       />
 
       <div className="game-instructions">
-        Use Arrow Keys or WASD to move
+        P1: Arrow Keys or WASD | P2: IJKL
       </div>
     </div>
   );

@@ -32,10 +32,15 @@ export function createInitialState() {
     frameCount: 0,
     maze,
     dots: dotsState,
-    // Player starts at tile (1, 1) - first open space
+    // Player 1 starts at tile (1, 1) - first open space
     player: {
       x: TILE_SIZE * 1.5,
       y: TILE_SIZE * 1.5,
+    },
+    // Player 2 starts at bottom-right area
+    player2: {
+      x: TILE_SIZE * 8.5,
+      y: TILE_SIZE * 5.5,
     },
   };
 }
@@ -76,7 +81,7 @@ export function updateGameState(state, deltaTime) {
 }
 
 /**
- * Updates player position.
+ * Updates player 1 position.
  * @param {object} state - Current game state
  * @param {number} x - New X position
  * @param {number} y - New Y position
@@ -86,6 +91,20 @@ export function updatePlayerPosition(state, x, y) {
   return {
     ...state,
     player: { x, y },
+  };
+}
+
+/**
+ * Updates player 2 position.
+ * @param {object} state - Current game state
+ * @param {number} x - New X position
+ * @param {number} y - New Y position
+ * @returns {object} - Updated game state
+ */
+export function updatePlayer2Position(state, x, y) {
+  return {
+    ...state,
+    player2: { x, y },
   };
 }
 
