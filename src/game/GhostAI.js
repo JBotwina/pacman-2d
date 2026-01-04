@@ -55,7 +55,7 @@ const SCATTER_TARGETS = {
 /**
  * Starting positions for ghosts (pixel coordinates).
  */
-const GHOST_START_POSITIONS = {
+export const GHOST_START_POSITIONS = {
   [GhostType.BLINKY]: { x: TILE_SIZE * 9.5, y: TILE_SIZE * 7.5 },
   [GhostType.PINKY]: { x: TILE_SIZE * 10.5, y: TILE_SIZE * 7.5 },
   [GhostType.INKY]: { x: TILE_SIZE * 9.5, y: TILE_SIZE * 8.5 },

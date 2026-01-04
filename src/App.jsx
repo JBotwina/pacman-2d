@@ -13,6 +13,8 @@ import {
   GameStatus,
   TILE_SIZE,
   Direction,
+  GhostMode,
+  GHOST_EAT_POINTS,
 } from './game/GameState';
 import { getUncollectedDots, DotType } from './game/Dots';
 import Player from './components/Player';
@@ -232,8 +234,25 @@ function App() {
     // Draw ghosts with neon glow
     for (const ghostType of Object.keys(gameState.ghosts)) {
       const ghost = gameState.ghosts[ghostType];
-      // Use frightened color if ghosts are vulnerable, otherwise use ghost's color
-      const color = gameState.ghostsVulnerable ? FRIGHTENED_COLOR : (GHOST_COLORS[ghostType] || GHOST_COLORS.blinky);
+
+      // Skip eaten ghosts (they're respawning)
+      if (ghost.mode === GhostMode.EATEN) {
+        continue;
+      }
+
+      // Determine ghost color based on mode
+      let color;
+      if (ghost.mode === GhostMode.FRIGHTENED) {
+        // Flash between white and blue in last 2 seconds
+        const isFlashing = gameState.vulnerabilityTimer <= 2000;
+        if (isFlashing && Math.floor(gameState.elapsedTime / 200) % 2 === 0) {
+          color = '#ffffff';
+        } else {
+          color = FRIGHTENED_COLOR;
+        }
+      } else {
+        color = GHOST_COLORS[ghostType] || GHOST_COLORS.blinky;
+      }
 
       ctx.shadowColor = color;
       ctx.shadowBlur = 12;
@@ -263,7 +282,7 @@ function App() {
 
       // Draw eyes (white) - only when not frightened
       ctx.shadowBlur = 0;
-      if (!gameState.ghostsVulnerable) {
+      if (ghost.mode !== GhostMode.FRIGHTENED) {
         ctx.fillStyle = 'white';
         ctx.beginPath();
         ctx.ellipse(gx - size * 0.35, gy - size * 0.3, size * 0.25, size * 0.35, 0, 0, Math.PI * 2);

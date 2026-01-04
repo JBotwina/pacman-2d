@@ -13,9 +13,9 @@ import {
 import {
   createAllGhosts,
   updateAllGhosts,
-  setGhostMode,
   GhostMode,
   Direction,
+  GHOST_START_POSITIONS,
 } from './GhostAI.js';
 
 export const GameStatus = {
@@ -31,6 +31,19 @@ export const FRIGHTENED_DURATION = 8000; // 8 seconds of frightened mode
 export const FRIGHTENED_FLASH_TIME = 2000; // Flash for last 2 seconds
 export const FRIGHTENED_SPEED_MULTIPLIER = 0.5; // Ghosts move at half speed when frightened
 export const VULNERABILITY_DURATION = 10000; // Alias for compatibility
+
+// Ghost configuration
+export const GHOST_NAMES = ['blinky', 'pinky', 'inky', 'clyde'];
+export const GHOST_SIZE = 18; // Ghost hitbox size
+
+// Ghost respawn delay after being eaten (in ms)
+export const GHOST_RESPAWN_DELAY = 5000;
+
+/**
+ * Ghost point values for eating during frightened mode.
+ * Points double for each successive ghost eaten: 200, 400, 800, 1600
+ */
+export const GHOST_EAT_POINTS = [200, 400, 800, 1600];
 
 export function createInitialState() {
   const maze = createDefaultMaze();
@@ -67,6 +80,8 @@ export function createInitialState() {
     ghostsVulnerable: false,
     vulnerabilityTimer: 0,
     ghostsEatenDuringFrightened: 0,
+    // Ghost respawn timers (keyed by ghost type)
+    ghostRespawnTimers: {},
   };
 }
 
@@ -90,7 +105,7 @@ export function updateGameState(state, deltaTime) {
     state.player.y
   );
 
-  const newScore = state.score + totalPoints;
+  let newScore = state.score + totalPoints;
   const newStatus = allDotsCollected(newDotsState)
     ? GameStatus.LEVEL_COMPLETE
     : state.status;
@@ -100,33 +115,127 @@ export function updateGameState(state, deltaTime) {
   let vulnerabilityTimer = state.vulnerabilityTimer;
   let ghostsEatenDuringFrightened = state.ghostsEatenDuringFrightened;
   let updatedGhosts = state.ghosts;
+  let ghostRespawnTimers = { ...state.ghostRespawnTimers };
 
   if (powerPelletCollected) {
     // Start or reset vulnerability timer
     ghostsVulnerable = true;
     vulnerabilityTimer = VULNERABILITY_DURATION;
     ghostsEatenDuringFrightened = 0;
-    // Set all ghosts to frightened mode
-    updatedGhosts = setGhostMode(state.ghosts, GhostMode.FRIGHTENED);
+    // Set all non-eaten ghosts to frightened mode
+    updatedGhosts = {};
+    for (const ghostType of Object.keys(state.ghosts)) {
+      const ghost = state.ghosts[ghostType];
+      if (ghost.mode !== GhostMode.EATEN) {
+        updatedGhosts[ghostType] = { ...ghost, mode: GhostMode.FRIGHTENED };
+      } else {
+        updatedGhosts[ghostType] = ghost;
+      }
+    }
   } else if (ghostsVulnerable) {
     // Count down vulnerability timer
     vulnerabilityTimer = Math.max(0, vulnerabilityTimer - deltaTime);
     if (vulnerabilityTimer <= 0) {
       ghostsVulnerable = false;
       ghostsEatenDuringFrightened = 0;
-      // Return ghosts to chase mode
-      updatedGhosts = setGhostMode(state.ghosts, GhostMode.CHASE);
+      // Return non-eaten ghosts to chase mode
+      updatedGhosts = {};
+      for (const ghostType of Object.keys(state.ghosts)) {
+        const ghost = state.ghosts[ghostType];
+        if (ghost.mode === GhostMode.FRIGHTENED) {
+          updatedGhosts[ghostType] = { ...ghost, mode: GhostMode.CHASE };
+        } else {
+          updatedGhosts[ghostType] = ghost;
+        }
+      }
     }
   }
 
-  // Update ghost positions and AI
-  updatedGhosts = updateAllGhosts(
-    updatedGhosts,
+  // Handle ghost respawn timers
+  for (const ghostType of Object.keys(ghostRespawnTimers)) {
+    if (ghostRespawnTimers[ghostType] > 0) {
+      ghostRespawnTimers[ghostType] = Math.max(0, ghostRespawnTimers[ghostType] - deltaTime);
+
+      // Respawn ghost when timer reaches 0
+      if (ghostRespawnTimers[ghostType] <= 0) {
+        const ghost = updatedGhosts[ghostType];
+        if (ghost && ghost.mode === GhostMode.EATEN) {
+          // Respawn at starting position
+          const startPos = GHOST_START_POSITIONS[ghostType];
+          updatedGhosts = {
+            ...updatedGhosts,
+            [ghostType]: {
+              ...ghost,
+              x: startPos.x,
+              y: startPos.y,
+              mode: ghostsVulnerable ? GhostMode.FRIGHTENED : GhostMode.CHASE,
+            },
+          };
+        }
+        delete ghostRespawnTimers[ghostType];
+      }
+    }
+  }
+
+  // Update ghost positions and AI (only for non-eaten ghosts)
+  const ghostsToUpdate = {};
+  for (const ghostType of Object.keys(updatedGhosts)) {
+    if (updatedGhosts[ghostType].mode !== GhostMode.EATEN) {
+      ghostsToUpdate[ghostType] = updatedGhosts[ghostType];
+    }
+  }
+
+  const movedGhosts = updateAllGhosts(
+    ghostsToUpdate,
     state.maze,
     state.player,
     state.player.direction,
     deltaTime
   );
+
+  // Merge moved ghosts with eaten ghosts
+  for (const ghostType of Object.keys(updatedGhosts)) {
+    if (updatedGhosts[ghostType].mode === GhostMode.EATEN) {
+      movedGhosts[ghostType] = updatedGhosts[ghostType];
+    }
+  }
+  updatedGhosts = movedGhosts;
+
+  // Check for player-ghost collisions
+  for (const ghostType of GHOST_NAMES) {
+    const ghost = updatedGhosts[ghostType];
+    if (!ghost || ghost.mode === GhostMode.EATEN) {
+      continue;
+    }
+
+    // Check collision
+    const playerSize = TILE_SIZE - 4;
+    const collisionDistance = (playerSize + GHOST_SIZE) / 2;
+    const dx = state.player.x - ghost.x;
+    const dy = state.player.y - ghost.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance < collisionDistance) {
+      if (ghost.mode === GhostMode.FRIGHTENED) {
+        // Player eats the ghost - award escalating points
+        const ghostIndex = Math.min(ghostsEatenDuringFrightened, GHOST_EAT_POINTS.length - 1);
+        newScore += GHOST_EAT_POINTS[ghostIndex];
+        ghostsEatenDuringFrightened++;
+
+        // Mark ghost as eaten and start respawn timer
+        updatedGhosts = {
+          ...updatedGhosts,
+          [ghostType]: {
+            ...ghost,
+            mode: GhostMode.EATEN,
+          },
+        };
+        ghostRespawnTimers[ghostType] = GHOST_RESPAWN_DELAY;
+      }
+      // Note: When ghosts are not frightened, collision could trigger life loss
+      // For now, we just handle the ghost eating case
+    }
+  }
 
   return {
     ...state,
@@ -139,6 +248,7 @@ export function updateGameState(state, deltaTime) {
     ghostsVulnerable,
     vulnerabilityTimer,
     ghostsEatenDuringFrightened,
+    ghostRespawnTimers,
   };
 }
 
@@ -246,12 +356,6 @@ export function areGhostsFlashing(state) {
 }
 
 /**
- * Ghost point values for eating during frightened mode.
- * Points double for each successive ghost eaten: 200, 400, 800, 1600
- */
-export const GHOST_EAT_POINTS = [200, 400, 800, 1600];
-
-/**
  * Handles eating a ghost during frightened mode.
  * @param {object} state - Current game state
  * @returns {object} Updated game state with points added
@@ -272,4 +376,4 @@ export function eatGhost(state) {
 }
 
 // Re-export TILE_SIZE and Direction for components
-export { TILE_SIZE, Direction };
+export { TILE_SIZE, Direction, GhostMode };
