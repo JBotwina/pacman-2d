@@ -33,11 +33,17 @@ import {
 } from './Fruit.js';
 
 export const GameStatus = {
+  MODE_SELECT: 'mode_select',
   IDLE: 'idle',
   RUNNING: 'running',
   PAUSED: 'paused',
   GAME_OVER: 'game_over',
   LEVEL_COMPLETE: 'level_complete',
+};
+
+export const GameMode = {
+  SINGLE_PLAYER: '1P',
+  TWO_PLAYER: '2P',
 };
 
 // Frightened mode constants
@@ -64,7 +70,8 @@ export function createInitialState() {
   const dotsState = createDotsFromMaze(maze);
 
   return {
-    status: GameStatus.IDLE,
+    status: GameStatus.MODE_SELECT,
+    gameMode: null, // Will be set when player selects 1P or 2P
     // Player 1 stats
     score: 0,
     lives: 3,
@@ -338,6 +345,17 @@ export function updatePlayer2Position(state, x, y, direction = null) {
       y,
       direction: direction || state.player2.direction,
     },
+  };
+}
+
+/**
+ * Sets the game mode (1P or 2P) and transitions to IDLE (ready to start).
+ */
+export function setGameMode(state, mode) {
+  return {
+    ...state,
+    gameMode: mode,
+    status: GameStatus.IDLE,
   };
 }
 

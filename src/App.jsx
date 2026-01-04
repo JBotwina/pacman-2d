@@ -10,7 +10,9 @@ import {
   pauseGame,
   resumeGame,
   resetGame,
+  setGameMode,
   GameStatus,
+  GameMode,
   TILE_SIZE,
   Direction,
   GhostMode,
@@ -22,6 +24,7 @@ import { getFruitData, FRUIT_SPAWN_TILE } from './game/Fruit';
 import Player from './components/Player';
 import Ghost from './components/Ghost';
 import ScoreDisplay from './components/ScoreDisplay';
+import ModeSelectScreen from './components/ModeSelectScreen';
 import StartScreen from './components/StartScreen';
 import PauseOverlay from './components/PauseOverlay';
 import GameOverScreen from './components/GameOverScreen';
@@ -109,6 +112,24 @@ function App() {
           return state;
         });
       }
+
+      // Mode selection with 1/2 keys
+      if (e.key === '1') {
+        setGameState((state) => {
+          if (state.status === GameStatus.MODE_SELECT) {
+            return setGameMode(state, GameMode.SINGLE_PLAYER);
+          }
+          return state;
+        });
+      }
+      if (e.key === '2') {
+        setGameState((state) => {
+          if (state.status === GameStatus.MODE_SELECT) {
+            return setGameMode(state, GameMode.TWO_PLAYER);
+          }
+          return state;
+        });
+      }
     };
     const handleKeyUp = (e) => {
       keysRef.current[e.key] = false;
@@ -171,25 +192,27 @@ function App() {
       // Update player position in game state with direction for ghost AI
       state = updatePlayerPosition(state, playerState.x, playerState.y, directionObj);
 
-      // Player 2 movement using grid-based movement (IJKL keys)
-      const player2Input = getPlayer2InputDirection();
-      const player2State = player2Movement.update(state.maze, deltaTime, player2Input);
+      // Player 2 movement using grid-based movement (IJKL keys) - only in 2P mode
+      if (state.gameMode === GameMode.TWO_PLAYER) {
+        const player2Input = getPlayer2InputDirection();
+        const player2State = player2Movement.update(state.maze, deltaTime, player2Input);
 
-      // Update Player 2 direction for rendering
-      setPlayer2Direction(player2State.direction);
+        // Update Player 2 direction for rendering
+        setPlayer2Direction(player2State.direction);
 
-      // Convert string direction to Direction object for Player 2
-      let direction2Obj = state.player2.direction;
-      switch (player2State.direction) {
-        case 'up': direction2Obj = Direction.UP; break;
-        case 'down': direction2Obj = Direction.DOWN; break;
-        case 'left': direction2Obj = Direction.LEFT; break;
-        case 'right': direction2Obj = Direction.RIGHT; break;
-        default: break;
+        // Convert string direction to Direction object for Player 2
+        let direction2Obj = state.player2.direction;
+        switch (player2State.direction) {
+          case 'up': direction2Obj = Direction.UP; break;
+          case 'down': direction2Obj = Direction.DOWN; break;
+          case 'left': direction2Obj = Direction.LEFT; break;
+          case 'right': direction2Obj = Direction.RIGHT; break;
+          default: break;
+        }
+
+        // Update Player 2 position in game state
+        state = updatePlayer2Position(state, player2State.x, player2State.y, direction2Obj);
       }
-
-      // Update Player 2 position in game state
-      state = updatePlayer2Position(state, player2State.x, player2State.y, direction2Obj);
 
       return updateGameState(state, deltaTime);
     });
@@ -403,45 +426,51 @@ function App() {
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    // Draw Player 2 (Pac-Man) with cyan glow and mouth
-    ctx.shadowColor = '#00ffff';
-    ctx.shadowBlur = 15;
-    ctx.fillStyle = '#00ffff';
+    // Draw Player 2 (Pac-Man) with cyan glow and mouth - only in 2P mode
+    if (gameState.gameMode === GameMode.TWO_PLAYER) {
+      ctx.shadowColor = '#00ffff';
+      ctx.shadowBlur = 15;
+      ctx.fillStyle = '#00ffff';
 
-    // Calculate mouth angle based on Player 2 direction
-    let startAngle2, endAngle2;
-    switch (player2Direction) {
-      case 'right':
-        startAngle2 = mouthAngle;
-        endAngle2 = 2 * Math.PI - mouthAngle;
-        break;
-      case 'down':
-        startAngle2 = Math.PI / 2 + mouthAngle;
-        endAngle2 = Math.PI / 2 - mouthAngle + 2 * Math.PI;
-        break;
-      case 'left':
-        startAngle2 = Math.PI + mouthAngle;
-        endAngle2 = Math.PI - mouthAngle + 2 * Math.PI;
-        break;
-      case 'up':
-        startAngle2 = 3 * Math.PI / 2 + mouthAngle;
-        endAngle2 = 3 * Math.PI / 2 - mouthAngle + 2 * Math.PI;
-        break;
-      default:
-        startAngle2 = mouthAngle;
-        endAngle2 = 2 * Math.PI - mouthAngle;
+      // Calculate mouth angle based on Player 2 direction
+      let startAngle2, endAngle2;
+      switch (player2Direction) {
+        case 'right':
+          startAngle2 = mouthAngle;
+          endAngle2 = 2 * Math.PI - mouthAngle;
+          break;
+        case 'down':
+          startAngle2 = Math.PI / 2 + mouthAngle;
+          endAngle2 = Math.PI / 2 - mouthAngle + 2 * Math.PI;
+          break;
+        case 'left':
+          startAngle2 = Math.PI + mouthAngle;
+          endAngle2 = Math.PI - mouthAngle + 2 * Math.PI;
+          break;
+        case 'up':
+          startAngle2 = 3 * Math.PI / 2 + mouthAngle;
+          endAngle2 = 3 * Math.PI / 2 - mouthAngle + 2 * Math.PI;
+          break;
+        default:
+          startAngle2 = mouthAngle;
+          endAngle2 = 2 * Math.PI - mouthAngle;
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(gameState.player2.x, gameState.player2.y);
+      ctx.arc(gameState.player2.x, gameState.player2.y, TILE_SIZE / 2 - 2, startAngle2, endAngle2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
     }
-
-    ctx.beginPath();
-    ctx.moveTo(gameState.player2.x, gameState.player2.y);
-    ctx.arc(gameState.player2.x, gameState.player2.y, TILE_SIZE / 2 - 2, startAngle2, endAngle2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.shadowBlur = 0;
   }, [gameState, playerDirection, player2Direction]);
 
   const isLoopRunning = gameState.status === GameStatus.RUNNING;
   useGameLoop(handleUpdate, isLoopRunning);
+
+  const handleModeSelect = (mode) => {
+    setGameState((state) => setGameMode(state, mode));
+  };
 
   const handleStart = () => {
     setGameState((state) => startGame(state));
@@ -481,8 +510,12 @@ function App() {
           tabIndex={0}
         />
 
+        {gameState.status === GameStatus.MODE_SELECT && (
+          <ModeSelectScreen onSelectMode={handleModeSelect} />
+        )}
+
         {gameState.status === GameStatus.IDLE && (
-          <StartScreen onStart={handleStart} />
+          <StartScreen onStart={handleStart} gameMode={gameState.gameMode} />
         )}
 
         {gameState.status === GameStatus.PAUSED && (
@@ -512,7 +545,9 @@ function App() {
 
       {gameState.status === GameStatus.RUNNING && (
         <div className="game-instructions">
-          P1: Arrow Keys or WASD | P2: IJKL | ESC: Pause
+          {gameState.gameMode === GameMode.TWO_PLAYER
+            ? 'P1: Arrow Keys or WASD | P2: IJKL | ESC: Pause'
+            : 'Arrow Keys or WASD to move | ESC: Pause'}
         </div>
       )}
     </div>
