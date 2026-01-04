@@ -18,7 +18,14 @@ import { getUncollectedDots, DotType } from './game/Dots';
 import Player from './components/Player';
 import Ghost from './components/Ghost';
 import ScoreDisplay from './components/ScoreDisplay';
+import StartScreen from './components/StartScreen';
+import PauseOverlay from './components/PauseOverlay';
+import GameOverScreen from './components/GameOverScreen';
+import LevelCompleteScreen from './components/LevelCompleteScreen';
 import './App.css';
+import './components/Menu.css';
+
+// Note: Player and Ghost components not used directly in canvas-based rendering
 
 const CANVAS_WIDTH = 400;
 const CANVAS_HEIGHT = 300;
@@ -61,6 +68,35 @@ function App() {
       if (e.key.startsWith('Arrow')) {
         e.preventDefault();
       }
+
+      // Handle menu controls
+      if (e.key === 'Escape') {
+        setGameState((state) => {
+          if (state.status === GameStatus.RUNNING) {
+            return pauseGame(state);
+          } else if (state.status === GameStatus.PAUSED) {
+            return resumeGame(state);
+          }
+          return state;
+        });
+      }
+
+      if (e.key === 'Enter') {
+        setGameState((state) => {
+          if (state.status === GameStatus.IDLE) {
+            return startGame(state);
+          } else if (state.status === GameStatus.PAUSED) {
+            return resumeGame(state);
+          } else if (state.status === GameStatus.GAME_OVER || state.status === GameStatus.LEVEL_COMPLETE) {
+            const newState = resetGame();
+            playerMovement.setPosition(newState.player.x, newState.player.y);
+            playerMovement.setDirection('right');
+            setPlayerDirection('right');
+            return startGame(newState);
+          }
+          return state;
+        });
+      }
     };
     const handleKeyUp = (e) => {
       keysRef.current[e.key] = false;
@@ -73,7 +109,7 @@ function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, []);
+  }, [playerMovement]);
 
   // Get current input direction from keys
   const getInputDirection = useCallback(() => {
@@ -302,10 +338,6 @@ function App() {
     setGameState((state) => startGame(state));
   };
 
-  const handlePause = () => {
-    setGameState((state) => pauseGame(state));
-  };
-
   const handleResume = () => {
     setGameState((state) => resumeGame(state));
   };
@@ -323,35 +355,53 @@ function App() {
     <div className="game-container">
       <h1 className="game-title">PAC-MAN</h1>
 
-      <ScoreDisplay gameState={gameState} />
+      {gameState.status !== GameStatus.IDLE && (
+        <ScoreDisplay gameState={gameState} />
+      )}
 
-      <div className="game-controls">
+      <div className="game-area">
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          className="game-canvas"
+          tabIndex={0}
+        />
+
         {gameState.status === GameStatus.IDLE && (
-          <button onClick={handleStart}>Start Game</button>
+          <StartScreen onStart={handleStart} />
         )}
-        {gameState.status === GameStatus.RUNNING && (
-          <button onClick={handlePause}>Pause</button>
-        )}
+
         {gameState.status === GameStatus.PAUSED && (
-          <button onClick={handleResume}>Resume</button>
+          <PauseOverlay
+            onResume={handleResume}
+            onQuit={handleReset}
+            score={gameState.score}
+          />
         )}
+
+        {gameState.status === GameStatus.GAME_OVER && (
+          <GameOverScreen
+            score={gameState.score}
+            level={gameState.level}
+            onRestart={handleReset}
+          />
+        )}
+
         {gameState.status === GameStatus.LEVEL_COMPLETE && (
-          <div className="level-complete">Level Complete!</div>
+          <LevelCompleteScreen
+            score={gameState.score}
+            level={gameState.level}
+            onNextLevel={handleReset}
+          />
         )}
-        <button onClick={handleReset}>Reset</button>
       </div>
 
-      <canvas
-        ref={canvasRef}
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-        className="game-canvas"
-        tabIndex={0}
-      />
-
-      <div className="game-instructions">
-        P1: Arrow Keys or WASD | P2: IJKL
-      </div>
+      {gameState.status === GameStatus.RUNNING && (
+        <div className="game-instructions">
+          P1: Arrow Keys or WASD | P2: IJKL | ESC: Pause
+        </div>
+      )}
     </div>
   );
 }

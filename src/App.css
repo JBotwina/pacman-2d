@@ -57,6 +57,11 @@
   color: #6a6aff;
 }
 
+.game-area {
+  position: relative;
+  display: inline-block;
+}
+
 .game-canvas {
   background: #000;
   border: 3px solid #2121de;
