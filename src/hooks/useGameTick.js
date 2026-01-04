@@ -159,13 +159,10 @@ export function useGameTick({ getPlayer1Input, getPlayer2Input } = {}) {
   }, [status, player, player1Movement]);
 
   return {
-    // Expose directions for rendering
-    player1Direction: player1DirectionRef.current,
-    player2Direction: player2DirectionRef.current,
     // Expose movement controllers for manual position resets
     player1Movement,
     player2Movement,
-    // Expose direction refs for real-time access in render
+    // Expose direction getters for real-time access (call these in render)
     getPlayer1Direction: () => player1DirectionRef.current,
     getPlayer2Direction: () => player2DirectionRef.current,
   };
