@@ -4,7 +4,7 @@
 These instructions are for AI assistants working in this project.
 
 Always open `@/openspec/AGENTS.md` when the request:
-- Mentions planning or proposals (words like proposal, spec, change, plan)
+- Mentions openspec in the context of proposals
 - Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
 - Sounds ambiguous and you need the authoritative spec before coding
 
@@ -17,7 +17,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
 
-Use 'bd' for task tracking
+Use 'bd' for task tracking and planning after open spec has an approved specification. 
 
 ## Landing the Plane (Session Completion)
 
