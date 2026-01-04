@@ -12,6 +12,7 @@ import {
   TILE_SIZE,
 } from './game/GameState';
 import { getUncollectedDots } from './game/Dots';
+import Player from './components/Player';
 import './App.css';
 
 const CANVAS_WIDTH = 400;

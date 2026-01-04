@@ -1,15 +1,14 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
 .game-container {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 2rem;
   gap: 1.5rem;
+}
+
+.game-container h1 {
+  color: #ffeb3b;
+  margin: 0;
 }
 
 .game-stats {
@@ -62,4 +61,13 @@
   color: #4caf50;
   font-weight: bold;
   font-size: 1.2rem;
+}
+
+.game-board {
+  position: relative;
+  width: 448px;
+  height: 496px;
+  background: #0a0a0a;
+  border: 2px solid #333;
+  border-radius: 4px;
 }
