@@ -208,13 +208,16 @@ export function updateGameState(state, deltaTime) {
     }
   }
 
+  // Pass FRIGHTENED as release mode when ghosts are vulnerable,
+  // so ghosts released from house enter frightened mode
+  const releaseMode = ghostsVulnerable ? GhostMode.FRIGHTENED : globalMode;
   const movedGhosts = updateAllGhosts(
     ghostsToUpdate,
     state.maze,
     state.player,
     state.player.direction,
     deltaTime,
-    globalMode
+    releaseMode
   );
 
   // Merge moved ghosts with eaten ghosts
