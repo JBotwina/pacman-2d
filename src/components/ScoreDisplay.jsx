@@ -99,6 +99,7 @@ function useAnimatedScore(targetScore) {
 function ScoreDisplay({ gameState }) {
   const {
     score,
+    highScore,
     lives,
     player2Score,
     player2Lives,
@@ -123,6 +124,8 @@ function ScoreDisplay({ gameState }) {
       </div>
 
       <div className="score-display__center">
+        <div className="score-display__high-score-label">HIGH SCORE</div>
+        <div className="score-display__high-score">{highScore.toLocaleString()}</div>
         <div className="score-display__level-label">LEVEL</div>
         <div className="score-display__level">{level}</div>
       </div>

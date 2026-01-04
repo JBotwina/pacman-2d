@@ -62,8 +62,28 @@ const GHOST_COLORS = {
   clyde: '#ffb852',
 };
 
+// localStorage key for high score
+const HIGH_SCORE_KEY = 'pacman-high-score';
+
+function loadHighScore() {
+  try {
+    const saved = localStorage.getItem(HIGH_SCORE_KEY);
+    return saved ? parseInt(saved, 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveHighScore(score) {
+  try {
+    localStorage.setItem(HIGH_SCORE_KEY, score.toString());
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
 function App() {
-  const [gameState, setGameState] = useState(createInitialState);
+  const [gameState, setGameState] = useState(() => createInitialState(loadHighScore()));
   const [playerDirection, setPlayerDirection] = useState('right');
   const [player2Direction, setPlayer2Direction] = useState('left');
   const canvasRef = useRef(null);
@@ -78,6 +98,13 @@ function App() {
     player2Movement.setDirection('left');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount - intentionally ignore dependencies
+
+  // Save high score to localStorage when it changes
+  useEffect(() => {
+    if (gameState.highScore > 0) {
+      saveHighScore(gameState.highScore);
+    }
+  }, [gameState.highScore]);
 
   // Handle keyboard input
   useEffect(() => {
@@ -107,7 +134,7 @@ function App() {
           } else if (state.status === GameStatus.PAUSED) {
             return resumeGame(state);
           } else if (state.status === GameStatus.GAME_OVER || state.status === GameStatus.LEVEL_COMPLETE) {
-            const newState = resetGame();
+            const newState = resetGame(state.highScore);
             playerMovement.setPosition(newState.player.x, newState.player.y);
             playerMovement.setDirection('right');
             setPlayerDirection('right');
@@ -547,7 +574,7 @@ function App() {
   };
 
   const handleReset = () => {
-    const newState = resetGame();
+    const newState = resetGame(gameState.highScore);
     setGameState(newState);
     // Reset player movement to initial position
     playerMovement.setPosition(newState.player.x, newState.player.y);

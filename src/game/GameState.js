@@ -68,7 +68,7 @@ export const GHOST_RESPAWN_DELAY = 5000;
  */
 export const GHOST_EAT_POINTS = [200, 400, 800, 1600];
 
-export function createInitialState() {
+export function createInitialState(highScore = 0) {
   const maze = createDefaultMaze();
   const dotsState = createDotsFromMaze(maze);
 
@@ -77,6 +77,7 @@ export function createInitialState() {
     gameMode: null, // Will be set when player selects 1P or 2P
     // Player 1 stats
     score: 0,
+    highScore,
     lives: 3,
     // Player 2 stats
     player2Score: 0,
@@ -369,12 +370,16 @@ export function updateGameState(state, deltaTime) {
   }
 
 
+  const finalScoreWithFruit = finalScore + fruitPoints;
+  const newHighScore = Math.max(state.highScore, finalScoreWithFruit, finalPlayer2Score);
+
   return {
     ...state,
     elapsedTime: state.elapsedTime + deltaTime,
     frameCount: state.frameCount + 1,
     dots: newDotsState,
-    score: finalScore + fruitPoints,
+    score: finalScoreWithFruit,
+    highScore: newHighScore,
     player2Score: finalPlayer2Score,
     status: finalStatus,
     lives,
@@ -478,10 +483,11 @@ export function resumeGame(state) {
 }
 
 /**
- * Resets the game to initial state.
+ * Resets the game to initial state, preserving high score.
+ * @param {number} highScore - High score to preserve
  */
-export function resetGame() {
-  return createInitialState();
+export function resetGame(highScore = 0) {
+  return createInitialState(highScore);
 }
 
 /**
