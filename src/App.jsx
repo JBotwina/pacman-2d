@@ -393,12 +393,32 @@ function App() {
         ctx.ellipse(gx + size * 0.4, gy - size * 0.25, size * 0.12, size * 0.18, 0, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        // Frightened face - small dots for eyes, wavy mouth
+        // Frightened face - eyes and wavy mouth
         ctx.fillStyle = '#fff';
+        // Draw larger eyes for better visibility
         ctx.beginPath();
-        ctx.arc(gx - size * 0.3, gy - size * 0.2, 2, 0, Math.PI * 2);
-        ctx.arc(gx + size * 0.3, gy - size * 0.2, 2, 0, Math.PI * 2);
+        ctx.arc(gx - size * 0.3, gy - size * 0.2, 3, 0, Math.PI * 2);
         ctx.fill();
+        ctx.beginPath();
+        ctx.arc(gx + size * 0.3, gy - size * 0.2, 3, 0, Math.PI * 2);
+        ctx.fill();
+        // Draw wavy mouth
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const mouthY = gy + size * 0.15;
+        const mouthWidth = size * 0.7;
+        const waveHeight = size * 0.12;
+        ctx.moveTo(gx - mouthWidth / 2, mouthY);
+        // Draw 3 waves
+        for (let i = 0; i < 3; i++) {
+          const segmentWidth = mouthWidth / 3;
+          const x1 = gx - mouthWidth / 2 + segmentWidth * i + segmentWidth / 2;
+          const x2 = gx - mouthWidth / 2 + segmentWidth * (i + 1);
+          const y1 = i % 2 === 0 ? mouthY - waveHeight : mouthY + waveHeight;
+          ctx.quadraticCurveTo(x1, y1, x2, mouthY);
+        }
+        ctx.stroke();
       }
       }
     }
