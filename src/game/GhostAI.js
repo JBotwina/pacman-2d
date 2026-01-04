@@ -406,7 +406,7 @@ export function updateGhost(ghost, maze, playerPos, playerDir, ghosts, deltaTime
       const exit = tileToPixel(GHOST_HOUSE_EXIT.tileX, GHOST_HOUSE_EXIT.tileY);
       updatedGhost.x = exit.x;
       updatedGhost.y = exit.y;
-      updatedGhost.direction = Direction.LEFT;
+      updatedGhost.direction = Direction.UP; // Start moving UP since LEFT is blocked at exit
     } else {
       // Still in house, don't move
       return updatedGhost;
