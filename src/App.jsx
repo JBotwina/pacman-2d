@@ -12,6 +12,10 @@ import {
   TILE_SIZE,
 } from './game/GameState';
 import { getUncollectedDots, DotType } from './game/Dots';
+import {
+  resolveMovement,
+  clampToMazeBounds,
+} from './game/Collision';
 import Player from './components/Player';
 import Ghost from './components/Ghost';
 import './App.css';
@@ -19,6 +23,7 @@ import './App.css';
 const CANVAS_WIDTH = 400;
 const CANVAS_HEIGHT = 300;
 const PLAYER_SPEED = 0.15; // pixels per ms
+const PLAYER_SIZE = TILE_SIZE - 4; // Player hitbox size (slightly smaller than tile)
 
 // Neon colors for maze rendering
 const WALL_COLOR = '#2121de';
@@ -65,29 +70,26 @@ function App() {
       if (keys['ArrowLeft'] || keys['a'] || keys['A']) dx -= 1;
       if (keys['ArrowRight'] || keys['d'] || keys['D']) dx += 1;
 
-      // Apply movement
+      // Apply movement with proper collision detection
       if (dx !== 0 || dy !== 0) {
         const speed = PLAYER_SPEED * deltaTime;
-        let newX = state.player.x + dx * speed;
-        let newY = state.player.y + dy * speed;
+        const targetX = state.player.x + dx * speed;
+        const targetY = state.player.y + dy * speed;
 
-        // Clamp to canvas bounds (simple collision)
-        newX = Math.max(TILE_SIZE, Math.min(CANVAS_WIDTH - TILE_SIZE, newX));
-        newY = Math.max(TILE_SIZE, Math.min(CANVAS_HEIGHT - TILE_SIZE, newY));
+        // Resolve movement with wall collision (handles sliding along walls)
+        const resolved = resolveMovement(
+          state.maze,
+          state.player.x,
+          state.player.y,
+          targetX,
+          targetY,
+          PLAYER_SIZE
+        );
 
-        // Check wall collision
-        const tileX = Math.floor(newX / TILE_SIZE);
-        const tileY = Math.floor(newY / TILE_SIZE);
+        // Clamp to maze bounds
+        const clamped = clampToMazeBounds(state.maze, resolved.x, resolved.y, PLAYER_SIZE);
 
-        if (
-          tileY >= 0 &&
-          tileY < state.maze.length &&
-          tileX >= 0 &&
-          tileX < state.maze[0].length &&
-          state.maze[tileY][tileX] !== 1
-        ) {
-          state = updatePlayerPosition(state, newX, newY);
-        }
+        state = updatePlayerPosition(state, clamped.x, clamped.y);
       }
 
       return updateGameState(state, deltaTime);
