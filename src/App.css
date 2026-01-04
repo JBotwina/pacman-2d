@@ -71,3 +71,32 @@
   border: 2px solid #333;
   border-radius: 4px;
 }
+
+.ghosts-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 2rem;
+  flex-wrap: wrap;
+  padding: 1rem;
+}
+
+.ghost-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ghost-name {
+  color: var(--ghost-color, #fff);
+  font-size: 0.875rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ghost-wrapper:nth-child(1) .ghost-name { color: #ff0000; text-shadow: 0 0 8px #ff0000; }
+.ghost-wrapper:nth-child(2) .ghost-name { color: #ffb8ff; text-shadow: 0 0 8px #ffb8ff; }
+.ghost-wrapper:nth-child(3) .ghost-name { color: #00ffff; text-shadow: 0 0 8px #00ffff; }
+.ghost-wrapper:nth-child(4) .ghost-name { color: #ffb852; text-shadow: 0 0 8px #ffb852; }

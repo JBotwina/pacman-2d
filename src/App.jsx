@@ -13,6 +13,7 @@ import {
 } from './game/GameState';
 import { getUncollectedDots } from './game/Dots';
 import Player from './components/Player';
+import Ghost from './components/Ghost';
 import './App.css';
 
 const CANVAS_WIDTH = 400;
