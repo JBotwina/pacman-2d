@@ -17,7 +17,6 @@ import {
   endFrightenedMode,
   markGhostEaten,
   checkGhostCollision,
-  resetGhosts,
   GhostMode,
   Direction,
   GHOST_START_POSITIONS,
