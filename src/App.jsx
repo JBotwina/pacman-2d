@@ -16,6 +16,7 @@ import {
   GhostMode,
   GHOST_EAT_POINTS,
 } from './game/GameState';
+import { MAZE_WIDTH, MAZE_HEIGHT } from './data/maze';
 import { getUncollectedDots, DotType } from './game/Dots';
 import { getFruitData, FRUIT_SPAWN_TILE } from './game/Fruit';
 import Player from './components/Player';
@@ -30,8 +31,9 @@ import './components/Menu.css';
 
 // Note: Player and Ghost components not used directly in canvas-based rendering
 
-const CANVAS_WIDTH = 400;
-const CANVAS_HEIGHT = 300;
+// Canvas dimensions based on actual maze size
+const CANVAS_WIDTH = MAZE_WIDTH * TILE_SIZE;
+const CANVAS_HEIGHT = MAZE_HEIGHT * TILE_SIZE;
 const PLAYER_SPEED = 6; // tiles per second for grid-based movement
 const PLAYER_SIZE = TILE_SIZE - 4; // Player hitbox size (slightly smaller than tile)
 

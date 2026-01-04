@@ -2,15 +2,17 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem;
-  gap: 1.5rem;
+  justify-content: center;
+  padding: 1rem;
+  gap: 1rem;
   min-height: 100vh;
   background-color: #000;
+  overflow: hidden;
 }
 
 .game-title {
   font-family: 'Press Start 2P', 'Courier New', monospace;
-  font-size: 2.5rem;
+  font-size: clamp(1.2rem, 5vw, 2.5rem);
   color: #ffff00;
   text-shadow:
     0 0 10px #ffff00,
@@ -19,6 +21,7 @@
     0 0 40px #ff8c00;
   margin: 0;
   letter-spacing: 4px;
+  text-align: center;
 }
 
 .game-stats {
@@ -59,7 +62,13 @@
 
 .game-area {
   position: relative;
-  display: inline-block;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Responsive scaling container */
+  width: 100%;
+  max-width: min(90vw, calc(90vh - 200px) * 0.903);
+  aspect-ratio: 448 / 496;
 }
 
 .game-canvas {
@@ -73,6 +82,11 @@
     inset 0 0 10px rgba(33, 33, 222, 0.3);
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  /* Scale canvas to fill container while maintaining aspect ratio */
+  width: 100%;
+  height: 100%;
+  max-width: 448px;
+  max-height: 496px;
 }
 
 .game-canvas:focus {
@@ -130,3 +144,44 @@
 .ghost-wrapper:nth-child(2) .ghost-name { color: #ffb8ff; text-shadow: 0 0 8px #ffb8ff; }
 .ghost-wrapper:nth-child(3) .ghost-name { color: #00ffff; text-shadow: 0 0 8px #00ffff; }
 .ghost-wrapper:nth-child(4) .ghost-name { color: #ffb852; text-shadow: 0 0 8px #ffb852; }
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 520px) {
+  .game-container {
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .game-stats {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+  }
+
+  .game-controls button {
+    padding: 0.4rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .game-instructions {
+    font-size: 0.75rem;
+    text-align: center;
+    padding: 0 0.5rem;
+  }
+}
+
+@media (max-height: 700px) {
+  .game-container {
+    padding: 0.25rem;
+    gap: 0.25rem;
+  }
+
+  .game-title {
+    font-size: clamp(1rem, 3vw, 1.5rem);
+  }
+
+  .game-stats {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+  }
+}
