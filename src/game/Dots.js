@@ -3,7 +3,8 @@
  * Handles dot placement, collection tracking, and scoring.
  */
 
-export const TILE_SIZE = 20;
+import { TILE_SIZE } from '../data/maze.js';
+export { TILE_SIZE };
 export const DOT_POINTS = 10;
 export const POWER_PELLET_POINTS = 50;
 

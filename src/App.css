@@ -68,7 +68,7 @@
   /* Responsive scaling container */
   width: 100%;
   max-width: min(90vw, calc(90vh - 200px) * 0.903);
-  aspect-ratio: 448 / 496;
+  aspect-ratio: 672 / 744;
 }
 
 .game-canvas {
@@ -85,8 +85,8 @@
   /* Scale canvas to fill container while maintaining aspect ratio */
   width: 100%;
   height: 100%;
-  max-width: 448px;
-  max-height: 496px;
+  max-width: 672px;
+  max-height: 744px;
 }
 
 .game-canvas:focus {
@@ -109,8 +109,8 @@
 
 .game-board {
   position: relative;
-  width: 448px;
-  height: 496px;
+  width: 672px;
+  height: 744px;
   background: #0a0a0a;
   border: 2px solid #333;
   border-radius: 4px;
