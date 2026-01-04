@@ -54,18 +54,22 @@
 
 .score-display__lives {
   display: flex;
-  gap: 0.4rem;
-  font-size: 1.1rem;
+  gap: 0.25rem;
+}
+
+.score-display__life {
+  width: 14px;
+  height: 14px;
 }
 
 .score-display__life--p1 {
   color: #ffff00;
-  text-shadow: 0 0 8px #ffff00, 0 0 16px #ffff00;
+  filter: drop-shadow(0 0 3px #ffff00);
 }
 
 .score-display__life--p2 {
   color: #00ffff;
-  text-shadow: 0 0 8px #00ffff, 0 0 16px #00ffff;
+  filter: drop-shadow(0 0 3px #00ffff);
 }
 
 .score-display__center {

@@ -5,6 +5,28 @@
 
 import './ScoreDisplay.css';
 
+/**
+ * PacManLife - Small Pac-Man icon for lives display.
+ * Uses SVG to render a classic Pac-Man shape with mouth.
+ */
+function PacManLife({ playerNumber }) {
+  const className = playerNumber === 1
+    ? 'score-display__life score-display__life--p1'
+    : 'score-display__life score-display__life--p2';
+
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className={className}
+    >
+      <path
+        d="M 10 10 L 18 5 A 10 10 0 1 0 18 15 Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 function ScoreDisplay({ gameState }) {
   const {
     score,
@@ -21,7 +43,7 @@ function ScoreDisplay({ gameState }) {
         <div className="score-display__score">{score.toLocaleString()}</div>
         <div className="score-display__lives">
           {Array.from({ length: lives }, (_, i) => (
-            <span key={i} className="score-display__life score-display__life--p1">●</span>
+            <PacManLife key={i} playerNumber={1} />
           ))}
         </div>
       </div>
@@ -36,7 +58,7 @@ function ScoreDisplay({ gameState }) {
         <div className="score-display__score">{player2Score.toLocaleString()}</div>
         <div className="score-display__lives">
           {Array.from({ length: player2Lives }, (_, i) => (
-            <span key={i} className="score-display__life score-display__life--p2">●</span>
+            <PacManLife key={i} playerNumber={2} />
           ))}
         </div>
       </div>
