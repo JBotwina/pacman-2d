@@ -5,6 +5,7 @@
 
 export const TILE_SIZE = 20;
 export const DOT_POINTS = 10;
+export const POWER_PELLET_POINTS = 50;
 
 /**
  * Dot types - regular dots and power pellets.
@@ -34,8 +35,30 @@ export function createDot(tileX, tileY, type = DotType.REGULAR) {
 }
 
 /**
+ * Power pellet positions (tile coordinates).
+ * These are placed near the corners of the maze.
+ */
+const POWER_PELLET_POSITIONS = [
+  { x: 1, y: 1 },   // Top-left
+  { x: 18, y: 1 },  // Top-right
+  { x: 1, y: 13 },  // Bottom-left
+  { x: 18, y: 13 }, // Bottom-right
+];
+
+/**
+ * Checks if a position should have a power pellet.
+ * @param {number} x - Tile X coordinate
+ * @param {number} y - Tile Y coordinate
+ * @returns {boolean} True if power pellet should be placed here
+ */
+function isPowerPelletPosition(x, y) {
+  return POWER_PELLET_POSITIONS.some((pos) => pos.x === x && pos.y === y);
+}
+
+/**
  * Creates the initial dot state for a level.
  * Dots are placed on all empty tiles in the maze.
+ * Power pellets are placed at designated corner positions.
  * @param {number[][]} maze - 2D array where 0 = empty (place dot), 1 = wall
  * @returns {object} Dots state
  */
@@ -46,7 +69,8 @@ export function createDotsFromMaze(maze) {
   for (let y = 0; y < maze.length; y++) {
     for (let x = 0; x < maze[y].length; x++) {
       if (maze[y][x] === 0) {
-        const dot = createDot(x, y, DotType.REGULAR);
+        const dotType = isPowerPelletPosition(x, y) ? DotType.POWER : DotType.REGULAR;
+        const dot = createDot(x, y, dotType);
         dots[dot.id] = dot;
         totalDots++;
       }
@@ -109,12 +133,12 @@ export function checkDotCollision(x, y, dot) {
  * Collects a dot and returns the points earned.
  * @param {object} dotsState - Current dots state
  * @param {string} dotId - ID of dot to collect
- * @returns {object} { newDotsState, points } - Updated state and points earned
+ * @returns {object} { newDotsState, points, isPowerPellet } - Updated state, points earned, and power pellet flag
  */
 export function collectDot(dotsState, dotId) {
   const dot = dotsState.dots[dotId];
   if (!dot || dot.collected) {
-    return { newDotsState: dotsState, points: 0 };
+    return { newDotsState: dotsState, points: 0, isPowerPellet: false };
   }
 
   const newDots = {
@@ -122,13 +146,17 @@ export function collectDot(dotsState, dotId) {
     [dotId]: { ...dot, collected: true },
   };
 
+  const isPowerPellet = dot.type === DotType.POWER;
+  const points = isPowerPellet ? POWER_PELLET_POINTS : DOT_POINTS;
+
   return {
     newDotsState: {
       ...dotsState,
       dots: newDots,
       collectedDots: dotsState.collectedDots + 1,
     },
-    points: DOT_POINTS,
+    points,
+    isPowerPellet,
   };
 }
 
@@ -137,22 +165,26 @@ export function collectDot(dotsState, dotId) {
  * @param {object} dotsState - Current dots state
  * @param {number} x - Entity X position (pixels)
  * @param {number} y - Entity Y position (pixels)
- * @returns {object} { newDotsState, totalPoints } - Updated state and total points earned
+ * @returns {object} { newDotsState, totalPoints, powerPelletCollected } - Updated state, total points, and power pellet flag
  */
 export function collectDotsAtPosition(dotsState, x, y) {
   let totalPoints = 0;
   let currentState = dotsState;
+  let powerPelletCollected = false;
 
   for (const dotId in dotsState.dots) {
     const dot = dotsState.dots[dotId];
     if (checkDotCollision(x, y, dot)) {
-      const { newDotsState, points } = collectDot(currentState, dotId);
+      const { newDotsState, points, isPowerPellet } = collectDot(currentState, dotId);
       currentState = newDotsState;
       totalPoints += points;
+      if (isPowerPellet) {
+        powerPelletCollected = true;
+      }
     }
   }
 
-  return { newDotsState: currentState, totalPoints };
+  return { newDotsState: currentState, totalPoints, powerPelletCollected };
 }
 
 /**

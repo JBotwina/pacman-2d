@@ -7,14 +7,29 @@ const GHOST_COLORS = {
   clyde: '#ffb852',
 }
 
-function Ghost({ name = 'blinky', size = 40 }) {
-  const color = GHOST_COLORS[name.toLowerCase()] || GHOST_COLORS.blinky
+const FRIGHTENED_COLOR = '#2121de'
+const FRIGHTENED_FLASH_COLOR = '#ffffff'
+
+function Ghost({ name = 'blinky', size = 40, frightened = false, frightenedFlashing = false }) {
+  const normalColor = GHOST_COLORS[name.toLowerCase()] || GHOST_COLORS.blinky
+
+  let color = normalColor
+  if (frightened) {
+    color = frightenedFlashing ? FRIGHTENED_FLASH_COLOR : FRIGHTENED_COLOR
+  }
+
+  const className = [
+    'ghost',
+    `ghost-${name.toLowerCase()}`,
+    frightened && 'ghost-frightened',
+    frightenedFlashing && 'ghost-flashing',
+  ].filter(Boolean).join(' ')
 
   return (
     <div
-      className={`ghost ghost-${name.toLowerCase()}`}
+      className={className}
       style={{ '--ghost-color': color, '--ghost-size': `${size}px` }}
-      title={name}
+      title={frightened ? `${name} (frightened)` : name}
     >
       <svg
         viewBox="0 0 32 36"
@@ -27,12 +42,29 @@ function Ghost({ name = 'blinky', size = 40 }) {
           d="M16 0 C6 0 0 8 0 16 L0 32 L4 28 L8 32 L12 28 L16 32 L20 28 L24 32 L28 28 L32 32 L32 16 C32 8 26 0 16 0"
           fill={color}
         />
-        {/* Eyes */}
-        <ellipse cx="10" cy="14" rx="4" ry="5" fill="white" />
-        <ellipse cx="22" cy="14" rx="4" ry="5" fill="white" />
-        {/* Pupils */}
-        <ellipse cx="11" cy="15" rx="2" ry="3" fill="#1a1aff" />
-        <ellipse cx="23" cy="15" rx="2" ry="3" fill="#1a1aff" />
+        {frightened ? (
+          <>
+            {/* Frightened face - wavy mouth and simple eyes */}
+            <ellipse cx="10" cy="14" rx="3" ry="3" fill="white" />
+            <ellipse cx="22" cy="14" rx="3" ry="3" fill="white" />
+            {/* Wavy mouth */}
+            <path
+              d="M6 22 Q9 19 12 22 Q15 25 18 22 Q21 19 24 22"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+            />
+          </>
+        ) : (
+          <>
+            {/* Normal eyes */}
+            <ellipse cx="10" cy="14" rx="4" ry="5" fill="white" />
+            <ellipse cx="22" cy="14" rx="4" ry="5" fill="white" />
+            {/* Pupils */}
+            <ellipse cx="11" cy="15" rx="2" ry="3" fill="#1a1aff" />
+            <ellipse cx="23" cy="15" rx="2" ry="3" fill="#1a1aff" />
+          </>
+        )}
       </svg>
     </div>
   )
