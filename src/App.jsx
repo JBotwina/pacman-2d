@@ -17,6 +17,7 @@ import StartScreen from './components/StartScreen';
 import PauseOverlay from './components/PauseOverlay';
 import GameOverScreen from './components/GameOverScreen';
 import LevelCompleteScreen from './components/LevelCompleteScreen';
+import GameCompleteScreen from './components/GameCompleteScreen';
 import './App.css';
 import './components/Menu.css';
 
@@ -119,7 +120,7 @@ function App() {
           startGame();
         } else if (state.status === GameStatus.PAUSED) {
           resumeGame();
-        } else if (state.status === GameStatus.GAME_OVER || state.status === GameStatus.LEVEL_COMPLETE) {
+        } else if (state.status === GameStatus.GAME_OVER || state.status === GameStatus.LEVEL_COMPLETE || state.status === GameStatus.GAME_COMPLETE) {
           resetGame();
           const newState = useGameStore.getState();
           playerMovement.setPosition(newState.player.x, newState.player.y);
@@ -620,6 +621,10 @@ function App() {
 
         {gameState.status === GameStatus.LEVEL_COMPLETE && (
           <LevelCompleteScreen />
+        )}
+
+        {gameState.status === GameStatus.GAME_COMPLETE && (
+          <GameCompleteScreen />
         )}
       </div>
 
