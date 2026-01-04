@@ -15,12 +15,14 @@ import {
   pauseGame,
   resumeGame,
   resetGame,
+  nextLevel,
   getGhostSpeedMultiplier,
   areGhostsFrightened,
   areGhostsFlashing,
   eatGhost,
   GameStatus,
   GameMode,
+  MAX_LEVEL,
   DEATH_ANIMATION_DURATION,
   FRIGHTENED_FLASH_TIME,
   FRIGHTENED_SPEED_MULTIPLIER,
@@ -576,6 +578,10 @@ describe('GameState', () => {
     it('has LEVEL_COMPLETE status', () => {
       expect(GameStatus.LEVEL_COMPLETE).toBe('level_complete');
     });
+
+    it('has GAME_COMPLETE status', () => {
+      expect(GameStatus.GAME_COMPLETE).toBe('game_complete');
+    });
   });
 
   describe('GameMode constants', () => {
@@ -603,6 +609,180 @@ describe('GameState', () => {
 
     it('has correct GHOST_EAT_POINTS sequence', () => {
       expect(GHOST_EAT_POINTS).toEqual([200, 400, 800, 1600]);
+    });
+
+    it('has MAX_LEVEL set to 5', () => {
+      expect(MAX_LEVEL).toBe(5);
+    });
+  });
+
+  describe('nextLevel', () => {
+    it('increments level by 1', () => {
+      const state = { ...createInitialState(), level: 1, status: GameStatus.LEVEL_COMPLETE };
+      const newState = nextLevel(state);
+      expect(newState.level).toBe(2);
+    });
+
+    it('sets status to IDLE', () => {
+      const state = { ...createInitialState(), level: 1, status: GameStatus.LEVEL_COMPLETE };
+      const newState = nextLevel(state);
+      expect(newState.status).toBe(GameStatus.IDLE);
+    });
+
+    it('preserves score', () => {
+      const state = { ...createInitialState(), level: 1, score: 5000 };
+      const newState = nextLevel(state);
+      expect(newState.score).toBe(5000);
+    });
+
+    it('preserves lives', () => {
+      const state = { ...createInitialState(), level: 1, lives: 2 };
+      const newState = nextLevel(state);
+      expect(newState.lives).toBe(2);
+    });
+
+    it('preserves highScore', () => {
+      const state = { ...createInitialState(10000), level: 1, highScore: 10000 };
+      const newState = nextLevel(state);
+      expect(newState.highScore).toBe(10000);
+    });
+
+    it('preserves gameMode', () => {
+      const state = { ...createInitialState(), level: 1, gameMode: GameMode.TWO_PLAYER };
+      const newState = nextLevel(state);
+      expect(newState.gameMode).toBe(GameMode.TWO_PLAYER);
+    });
+
+    it('preserves player2Score', () => {
+      const state = { ...createInitialState(), level: 1, player2Score: 3000 };
+      const newState = nextLevel(state);
+      expect(newState.player2Score).toBe(3000);
+    });
+
+    it('preserves player2Lives', () => {
+      const state = { ...createInitialState(), level: 1, player2Lives: 1 };
+      const newState = nextLevel(state);
+      expect(newState.player2Lives).toBe(1);
+    });
+
+    it('resets player 1 position', () => {
+      const state = {
+        ...createInitialState(),
+        level: 1,
+        player: { x: 500, y: 500, direction: Direction.UP },
+      };
+      const newState = nextLevel(state);
+      expect(newState.player.x).toBe(TILE_SIZE * 2.5);
+      expect(newState.player.y).toBe(TILE_SIZE * 4.5);
+      expect(newState.player.direction).toBe(Direction.RIGHT);
+    });
+
+    it('resets player 2 position', () => {
+      const state = {
+        ...createInitialState(),
+        level: 1,
+        player2: { x: 100, y: 100, direction: Direction.DOWN },
+      };
+      const newState = nextLevel(state);
+      expect(newState.player2.x).toBe(TILE_SIZE * 8.5);
+      expect(newState.player2.y).toBe(TILE_SIZE * 5.5);
+      expect(newState.player2.direction).toBe(Direction.LEFT);
+    });
+
+    it('resets ghosts', () => {
+      const state = createInitialState();
+      // Modify ghost positions
+      state.ghosts.blinky.x = 999;
+      const newState = nextLevel(state);
+      expect(newState.ghosts.blinky.x).not.toBe(999);
+      expect(newState.ghosts).toBeDefined();
+      expect(newState.ghosts.blinky).toBeDefined();
+      expect(newState.ghosts.pinky).toBeDefined();
+      expect(newState.ghosts.inky).toBeDefined();
+      expect(newState.ghosts.clyde).toBeDefined();
+    });
+
+    it('resets maze and dots', () => {
+      const state = createInitialState();
+      const newState = nextLevel(state);
+      expect(newState.maze).toBeDefined();
+      expect(newState.dots).toBeDefined();
+    });
+
+    it('resets ghost vulnerability state', () => {
+      const state = {
+        ...createInitialState(),
+        level: 1,
+        ghostsVulnerable: true,
+        vulnerabilityTimer: 5000,
+        ghostsEatenDuringFrightened: 3,
+      };
+      const newState = nextLevel(state);
+      expect(newState.ghostsVulnerable).toBe(false);
+      expect(newState.vulnerabilityTimer).toBe(0);
+      expect(newState.ghostsEatenDuringFrightened).toBe(0);
+    });
+
+    it('resets ghost respawn timers', () => {
+      const state = {
+        ...createInitialState(),
+        level: 1,
+        ghostRespawnTimers: { blinky: 1000, pinky: 2000 },
+      };
+      const newState = nextLevel(state);
+      expect(newState.ghostRespawnTimers).toEqual({});
+    });
+
+    it('resets fruit state', () => {
+      const state = createInitialState();
+      state.fruit.active = true;
+      state.fruit.spawnCount = 2;
+      const newState = nextLevel(state);
+      expect(newState.fruit).toBeDefined();
+      expect(newState.fruit.active).toBe(false);
+    });
+
+    it('resets elapsedTime and frameCount', () => {
+      const state = {
+        ...createInitialState(),
+        level: 1,
+        elapsedTime: 60000,
+        frameCount: 3600,
+      };
+      const newState = nextLevel(state);
+      expect(newState.elapsedTime).toBe(0);
+      expect(newState.frameCount).toBe(0);
+    });
+
+    it('sets status to GAME_COMPLETE when exceeding MAX_LEVEL', () => {
+      const state = { ...createInitialState(), level: MAX_LEVEL };
+      const newState = nextLevel(state);
+      expect(newState.status).toBe(GameStatus.GAME_COMPLETE);
+    });
+
+    it('does not increment level when at MAX_LEVEL', () => {
+      const state = { ...createInitialState(), level: MAX_LEVEL };
+      const newState = nextLevel(state);
+      expect(newState.level).toBe(MAX_LEVEL);
+    });
+
+    it('preserves score when game is complete', () => {
+      const state = { ...createInitialState(), level: MAX_LEVEL, score: 99999 };
+      const newState = nextLevel(state);
+      expect(newState.score).toBe(99999);
+    });
+
+    it('can progress through all levels', () => {
+      let state = createInitialState();
+      for (let i = 1; i < MAX_LEVEL; i++) {
+        state = { ...state, level: i };
+        state = nextLevel(state);
+        expect(state.level).toBe(i + 1);
+        expect(state.status).toBe(GameStatus.IDLE);
+      }
+      // Final level
+      state = nextLevel(state);
+      expect(state.status).toBe(GameStatus.GAME_COMPLETE);
     });
   });
 });

@@ -43,7 +43,11 @@ export const GameStatus = {
   DYING: 'dying',
   GAME_OVER: 'game_over',
   LEVEL_COMPLETE: 'level_complete',
+  GAME_COMPLETE: 'game_complete',
 };
+
+// Maximum level before game completion
+export const MAX_LEVEL = 5;
 
 // Death animation duration in milliseconds
 export const DEATH_ANIMATION_DURATION = 1500;
@@ -506,6 +510,63 @@ export function resumeGame(state) {
  */
 export function resetGame(highScore = 0) {
   return createInitialState(highScore);
+}
+
+/**
+ * Advances to the next level.
+ * Resets maze/dots/ghosts/fruit while preserving score/lives/highScore/gameMode.
+ * If already at MAX_LEVEL, sets status to GAME_COMPLETE instead.
+ *
+ * @param {object} state - Current game state
+ * @returns {object} - Updated game state for next level
+ */
+export function nextLevel(state) {
+  const newLevel = state.level + 1;
+
+  // Check if game is complete
+  if (newLevel > MAX_LEVEL) {
+    return {
+      ...state,
+      status: GameStatus.GAME_COMPLETE,
+    };
+  }
+
+  // Create fresh maze and dots
+  const maze = createDefaultMaze();
+  const dotsState = createDotsFromMaze(maze);
+
+  return {
+    ...state,
+    status: GameStatus.IDLE,
+    level: newLevel,
+    elapsedTime: 0,
+    frameCount: 0,
+    maze,
+    dots: dotsState,
+    // Reset player positions
+    player: {
+      x: TILE_SIZE * 2.5,
+      y: TILE_SIZE * 4.5,
+      direction: Direction.RIGHT,
+    },
+    player2: {
+      x: TILE_SIZE * 8.5,
+      y: TILE_SIZE * 5.5,
+      direction: Direction.LEFT,
+    },
+    // Reset ghosts
+    ghosts: createAllGhosts(),
+    globalMode: GhostMode.SCATTER,
+    modeTimer: 0,
+    ghostsVulnerable: false,
+    vulnerabilityTimer: 0,
+    ghostsEatenDuringFrightened: 0,
+    ghostRespawnTimers: {},
+    // Reset fruit
+    fruit: createInitialFruitState(),
+    deathAnimationTimer: 0,
+    // Preserved: score, lives, highScore, gameMode, player2Score, player2Lives
+  };
 }
 
 /**
