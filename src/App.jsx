@@ -11,7 +11,7 @@ import {
   GameStatus,
   TILE_SIZE,
 } from './game/GameState';
-import { getUncollectedDots } from './game/Dots';
+import { getUncollectedDots, DotType } from './game/Dots';
 import Player from './components/Player';
 import Ghost from './components/Ghost';
 import './App.css';
@@ -19,6 +19,12 @@ import './App.css';
 const CANVAS_WIDTH = 400;
 const CANVAS_HEIGHT = 300;
 const PLAYER_SPEED = 0.15; // pixels per ms
+
+// Neon colors for maze rendering
+const WALL_COLOR = '#2121de';
+const WALL_GLOW_COLOR = '#4a4aff';
+const DOT_COLOR = '#ffb8ae';
+const POWER_PELLET_COLOR = '#ffb8ae';
 
 function App() {
   const [gameState, setGameState] = useState(createInitialState);
@@ -88,7 +94,7 @@ function App() {
     });
   }, []);
 
-  // Render game
+  // Render game with neon glow effects
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -99,30 +105,44 @@ function App() {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Draw maze walls
-    ctx.fillStyle = '#00f';
+    // Draw maze walls with neon glow
     for (let y = 0; y < gameState.maze.length; y++) {
       for (let x = 0; x < gameState.maze[y].length; x++) {
         if (gameState.maze[y][x] === 1) {
-          ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          drawWallTile(ctx, x, y, gameState.maze);
         }
       }
     }
 
-    // Draw dots
+    // Draw dots with subtle glow
     const uncollectedDots = getUncollectedDots(gameState.dots);
-    ctx.fillStyle = '#fff';
     for (const dot of uncollectedDots) {
-      ctx.beginPath();
-      ctx.arc(dot.x, dot.y, 3, 0, Math.PI * 2);
-      ctx.fill();
+      if (dot.type === DotType.POWER) {
+        // Power pellet with glow
+        ctx.shadowColor = POWER_PELLET_COLOR;
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = POWER_PELLET_COLOR;
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else {
+        // Regular dot
+        ctx.fillStyle = DOT_COLOR;
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
-    // Draw player (Pacman)
-    ctx.fillStyle = '#ff0';
+    // Draw player (Pacman) with glow
+    ctx.shadowColor = '#ffff00';
+    ctx.shadowBlur = 15;
+    ctx.fillStyle = '#ffff00';
     ctx.beginPath();
     ctx.arc(gameState.player.x, gameState.player.y, TILE_SIZE / 2 - 2, 0, Math.PI * 2);
     ctx.fill();
+    ctx.shadowBlur = 0;
   }, [gameState]);
 
   const isLoopRunning = gameState.status === GameStatus.RUNNING;
@@ -153,7 +173,7 @@ function App() {
 
   return (
     <div className="game-container">
-      <h1>Pacman 2D</h1>
+      <h1 className="game-title">PAC-MAN</h1>
 
       <div className="game-stats">
         <div>Status: {gameState.status}</div>
@@ -193,6 +213,55 @@ function App() {
       </div>
     </div>
   );
+}
+
+// Draw wall tile with neon glow effect
+function drawWallTile(ctx, col, row, maze) {
+  const x = col * TILE_SIZE;
+  const y = row * TILE_SIZE;
+  const halfTile = TILE_SIZE / 2;
+  const centerX = x + halfTile;
+  const centerY = y + halfTile;
+
+  // Check adjacent tiles
+  const top = row > 0 && maze[row - 1][col] === 1;
+  const bottom = row < maze.length - 1 && maze[row + 1][col] === 1;
+  const left = col > 0 && maze[row][col - 1] === 1;
+  const right = col < maze[0].length - 1 && maze[row][col + 1] === 1;
+
+  // Set neon glow effect
+  ctx.shadowColor = WALL_GLOW_COLOR;
+  ctx.shadowBlur = 8;
+  ctx.strokeStyle = WALL_COLOR;
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+
+  // Draw connecting lines based on adjacent walls
+  if (top) {
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(centerX, y);
+  }
+  if (bottom) {
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(centerX, y + TILE_SIZE);
+  }
+  if (left) {
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(x, centerY);
+  }
+  if (right) {
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(x + TILE_SIZE, centerY);
+  }
+
+  // If isolated wall, draw a small square
+  if (!top && !bottom && !left && !right) {
+    ctx.rect(x + 4, y + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+  }
+
+  ctx.stroke();
+  ctx.shadowBlur = 0;
 }
 
 export default App;

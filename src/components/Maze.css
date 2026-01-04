@@ -1,0 +1,21 @@
+.maze-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.maze-canvas {
+  /* Neon glow border effect */
+  border: 3px solid #2121de;
+  border-radius: 8px;
+  box-shadow:
+    0 0 10px #2121de,
+    0 0 20px #2121de,
+    0 0 30px #4a4aff,
+    inset 0 0 10px rgba(33, 33, 222, 0.3);
+
+  /* Crisp pixel rendering for retro look */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
