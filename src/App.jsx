@@ -321,11 +321,6 @@ function App() {
         const gy = ghost.y;
         const size = TILE_SIZE / 2 - 2;
 
-        // Skip ghosts in house
-        if (ghost.mode === GhostMode.IN_HOUSE) {
-          continue;
-        }
-
       // Draw only eyes for eaten ghosts (returning to ghost house)
       if (ghost.mode === GhostMode.EATEN) {
         ctx.fillStyle = 'white';
