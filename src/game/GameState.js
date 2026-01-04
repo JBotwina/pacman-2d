@@ -125,14 +125,31 @@ export function updateGameState(state, deltaTime) {
     return state;
   }
 
-  // Check for dot collection at player position
-  const { newDotsState, totalPoints, powerPelletCollected } = collectDotsAtPosition(
+  // Check for dot collection at player 1 position
+  const { newDotsState: p1DotsState, totalPoints: p1Points, powerPelletCollected: p1PowerPellet } = collectDotsAtPosition(
     state.dots,
     state.player.x,
     state.player.y
   );
 
-  let newScore = state.score + totalPoints;
+  // Check for dot collection at player 2 position (in 2P mode)
+  let newDotsState = p1DotsState;
+  let p2Points = 0;
+  let p2PowerPellet = false;
+  if (state.gameMode === GameMode.TWO_PLAYER) {
+    const p2Collection = collectDotsAtPosition(
+      p1DotsState,
+      state.player2.x,
+      state.player2.y
+    );
+    newDotsState = p2Collection.newDotsState;
+    p2Points = p2Collection.totalPoints;
+    p2PowerPellet = p2Collection.powerPelletCollected;
+  }
+
+  let newScore = state.score + p1Points;
+  let newPlayer2Score = state.player2Score + p2Points;
+  const powerPelletCollected = p1PowerPellet || p2PowerPellet;
   const newStatus = allDotsCollected(newDotsState)
     ? GameStatus.LEVEL_COMPLETE
     : state.status;
@@ -238,6 +255,7 @@ export function updateGameState(state, deltaTime) {
   // Check player-ghost collision
   let lives = state.lives;
   let finalScore = newScore;
+  let finalPlayer2Score = newPlayer2Score;
   let finalStatus = newStatus;
   let player = state.player;
 
@@ -296,6 +314,7 @@ export function updateGameState(state, deltaTime) {
     frameCount: state.frameCount + 1,
     dots: newDotsState,
     score: finalScore + fruitPoints,
+    player2Score: finalPlayer2Score,
     status: finalStatus,
     lives,
     player,
