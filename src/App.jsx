@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useGameLoop } from './hooks/useGameLoop';
+import { usePlayerMovement } from './hooks/usePlayerMovement';
 import {
   createInitialState,
   updateGameState,
@@ -13,17 +14,13 @@ import {
   TILE_SIZE,
 } from './game/GameState';
 import { getUncollectedDots, DotType } from './game/Dots';
-import {
-  resolveMovement,
-  clampToMazeBounds,
-} from './game/Collision';
 import Player from './components/Player';
 import Ghost from './components/Ghost';
 import './App.css';
 
 const CANVAS_WIDTH = 400;
 const CANVAS_HEIGHT = 300;
-const PLAYER_SPEED = 0.15; // pixels per ms
+const PLAYER_SPEED = 6; // tiles per second for grid-based movement
 const PLAYER_SIZE = TILE_SIZE - 4; // Player hitbox size (slightly smaller than tile)
 
 // Neon colors for maze rendering
@@ -34,13 +31,25 @@ const POWER_PELLET_COLOR = '#ffb8ae';
 
 function App() {
   const [gameState, setGameState] = useState(createInitialState);
+  const [playerDirection, setPlayerDirection] = useState('right');
   const canvasRef = useRef(null);
   const keysRef = useRef({});
+  const playerMovement = usePlayerMovement({ speed: PLAYER_SPEED });
+
+  // Initialize player position when game state is created
+  useEffect(() => {
+    playerMovement.setPosition(gameState.player.x, gameState.player.y);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount - intentionally ignore dependencies
 
   // Handle keyboard input
   useEffect(() => {
     const handleKeyDown = (e) => {
       keysRef.current[e.key] = true;
+      // Prevent default for arrow keys to avoid page scrolling
+      if (e.key.startsWith('Arrow')) {
+        e.preventDefault();
+      }
     };
     const handleKeyUp = (e) => {
       keysRef.current[e.key] = false;
@@ -55,45 +64,36 @@ function App() {
     };
   }, []);
 
+  // Get current input direction from keys
+  const getInputDirection = useCallback(() => {
+    const keys = keysRef.current;
+    if (keys['ArrowUp'] || keys['w'] || keys['W']) return 'up';
+    if (keys['ArrowDown'] || keys['s'] || keys['S']) return 'down';
+    if (keys['ArrowLeft'] || keys['a'] || keys['A']) return 'left';
+    if (keys['ArrowRight'] || keys['d'] || keys['D']) return 'right';
+    return null;
+  }, []);
+
   const handleUpdate = useCallback((deltaTime) => {
     setGameState((state) => {
       if (state.status !== GameStatus.RUNNING) {
         return state;
       }
 
-      // Calculate movement based on keys pressed
-      let dx = 0;
-      let dy = 0;
-      const keys = keysRef.current;
+      // Get input direction
+      const inputDirection = getInputDirection();
 
-      if (keys['ArrowUp'] || keys['w'] || keys['W']) dy -= 1;
-      if (keys['ArrowDown'] || keys['s'] || keys['S']) dy += 1;
-      if (keys['ArrowLeft'] || keys['a'] || keys['A']) dx -= 1;
-      if (keys['ArrowRight'] || keys['d'] || keys['D']) dx += 1;
+      // Update player movement using the grid-based movement hook
+      const playerState = playerMovement.update(state.maze, deltaTime, inputDirection);
 
-      // Apply movement for Player 1 with collision detection
-      if (dx !== 0 || dy !== 0) {
-        const speed = PLAYER_SPEED * deltaTime;
-        const targetX = state.player.x + dx * speed;
-        const targetY = state.player.y + dy * speed;
+      // Update player direction for rendering
+      setPlayerDirection(playerState.direction);
 
-        // Resolve movement with wall collision (handles sliding along walls)
-        const resolved = resolveMovement(
-          state.maze,
-          state.player.x,
-          state.player.y,
-          targetX,
-          targetY,
-          PLAYER_SIZE
-        );
-
-        // Clamp to maze bounds
-        const clamped = clampToMazeBounds(state.maze, resolved.x, resolved.y, PLAYER_SIZE);
-
-        state = updatePlayerPosition(state, clamped.x, clamped.y);
-      }
+      // Update player position in game state
+      state = updatePlayerPosition(state, playerState.x, playerState.y);
 
       // Player 2 movement: I=up, J=left, K=down, L=right
+      const keys = keysRef.current;
       let dx2 = 0;
       let dy2 = 0;
 
@@ -129,7 +129,7 @@ function App() {
 
       return updateGameState(state, deltaTime);
     });
-  }, []);
+  }, [getInputDirection, playerMovement]);
 
   // Render game with neon glow effects
   useEffect(() => {
@@ -172,12 +172,41 @@ function App() {
       }
     }
 
-    // Draw Player 1 (Pacman) with yellow glow
+    // Draw Player 1 (Pacman) with yellow glow and mouth
     ctx.shadowColor = '#ffff00';
     ctx.shadowBlur = 15;
     ctx.fillStyle = '#ffff00';
+
+    // Calculate mouth angle based on direction
+    const mouthAngle = 0.25 * Math.PI; // 45 degree mouth opening
+    let startAngle, endAngle;
+
+    switch (playerDirection) {
+      case 'right':
+        startAngle = mouthAngle;
+        endAngle = 2 * Math.PI - mouthAngle;
+        break;
+      case 'down':
+        startAngle = Math.PI / 2 + mouthAngle;
+        endAngle = Math.PI / 2 - mouthAngle + 2 * Math.PI;
+        break;
+      case 'left':
+        startAngle = Math.PI + mouthAngle;
+        endAngle = Math.PI - mouthAngle + 2 * Math.PI;
+        break;
+      case 'up':
+        startAngle = 3 * Math.PI / 2 + mouthAngle;
+        endAngle = 3 * Math.PI / 2 - mouthAngle + 2 * Math.PI;
+        break;
+      default:
+        startAngle = mouthAngle;
+        endAngle = 2 * Math.PI - mouthAngle;
+    }
+
     ctx.beginPath();
-    ctx.arc(gameState.player.x, gameState.player.y, TILE_SIZE / 2 - 2, 0, Math.PI * 2);
+    ctx.moveTo(gameState.player.x, gameState.player.y);
+    ctx.arc(gameState.player.x, gameState.player.y, TILE_SIZE / 2 - 2, startAngle, endAngle);
+    ctx.closePath();
     ctx.fill();
     ctx.shadowBlur = 0;
 
@@ -189,7 +218,7 @@ function App() {
     ctx.arc(gameState.player2.x, gameState.player2.y, TILE_SIZE / 2 - 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
-  }, [gameState]);
+  }, [gameState, playerDirection]);
 
   const isLoopRunning = gameState.status === GameStatus.RUNNING;
   useGameLoop(handleUpdate, isLoopRunning);
@@ -207,7 +236,12 @@ function App() {
   };
 
   const handleReset = () => {
-    setGameState(resetGame());
+    const newState = resetGame();
+    setGameState(newState);
+    // Reset player movement to initial position
+    playerMovement.setPosition(newState.player.x, newState.player.y);
+    playerMovement.setDirection('right');
+    setPlayerDirection('right');
   };
 
   const fps =
