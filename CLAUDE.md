@@ -122,6 +122,65 @@ Only `blocks` dependencies affect the ready work queue.
 
 > The plane has NOT landed until `git push` completes successfully.
 
+#### Detailed Checklist
+
+**Before marking your task complete, you MUST run this checklist:**
+
+#### 1. Code Quality Gates
+```bash
+npm run lint          # Fix any lint errors you introduced
+npm run typecheck     # If exists - fix type errors
+npm run test
+npm run test:coverage
+```
+
+If `typecheck` script doesn't exist, check for TypeScript:
+```bash
+# If tsconfig.json exists but no typecheck script:
+npx tsc --noEmit
+```
+
+#### 2. Dead Code Cleanup
+
+**Remove what you created or discovered:**
+- Unused imports in files you touched
+- Dead code paths (unreachable code, commented-out blocks)
+- Orphaned files (components/utils no longer imported anywhere)
+- Debug/temp code (console.logs, TODO hacks)
+
+**Quick checks:**
+```bash
+# Find unused exports (if eslint configured)
+npm run lint -- --rule 'no-unused-vars: error'
+
+# Check for orphaned files you created
+git diff --name-only | xargs -I {} sh -c 'grep -r "$(basename {} .js)" src || echo "ORPHAN: {}"'
+```
+
+#### 3. Epic Awareness
+
+Check if your task completes an epic:
+```bash
+bd show <your-task-id>   # Look for "Depends on" → parent epic
+bd show <epic-id>        # Check if all children are closed
+```
+
+If you're the last child task → close the parent epic too:
+```bash
+bd close <epic-id> --reason="All child tasks complete"
+```
+
+#### 4. Session Close
+```bash
+git status                    # Verify changes
+git add <files>               # Stage code (not .beads/)
+bd sync --from-main           # Sync beads
+git commit -m "..."           # Include (pm-xxx) in message
+gt done                       # Signal completion to witness
+```
+
+> The plane has NOT landed until you run `gt done`.
+
 ### Commit Message Convention
 
 Include issue ID in parentheses:
