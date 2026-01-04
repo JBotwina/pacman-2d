@@ -45,29 +45,35 @@ export const Direction = {
 /**
  * Scatter corner targets for each ghost (tile coordinates).
  * These are the corners ghosts retreat to in scatter mode.
+ * For the 20x15 maze: row 1 and row 13 are walkable near corners.
  */
 const SCATTER_TARGETS = {
-  [GhostType.BLINKY]: { tileX: 18, tileY: 0 },   // Top-right
-  [GhostType.PINKY]: { tileX: 1, tileY: 0 },     // Top-left
-  [GhostType.INKY]: { tileX: 18, tileY: 14 },    // Bottom-right
-  [GhostType.CLYDE]: { tileX: 1, tileY: 14 },    // Bottom-left
+  [GhostType.BLINKY]: { tileX: 18, tileY: 1 },   // Top-right
+  [GhostType.PINKY]: { tileX: 1, tileY: 1 },     // Top-left
+  [GhostType.INKY]: { tileX: 18, tileY: 13 },    // Bottom-right
+  [GhostType.CLYDE]: { tileX: 1, tileY: 13 },    // Bottom-left
 };
 
 /**
  * Starting positions for ghosts (pixel coordinates).
+ * For the 20x15 maze, ghosts start in the center area (row 8 is walkable).
+ * Row 8: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+ * Columns 6-13 are all walkable (value 0).
  */
 export const GHOST_START_POSITIONS = {
-  [GhostType.BLINKY]: { x: TILE_SIZE * 9.5, y: TILE_SIZE * 7.5 },
-  [GhostType.PINKY]: { x: TILE_SIZE * 10.5, y: TILE_SIZE * 7.5 },
-  [GhostType.INKY]: { x: TILE_SIZE * 9.5, y: TILE_SIZE * 8.5 },
-  [GhostType.CLYDE]: { x: TILE_SIZE * 10.5, y: TILE_SIZE * 8.5 },
+  [GhostType.BLINKY]: { x: TILE_SIZE * 8.5, y: TILE_SIZE * 8.5 },   // Center-left area
+  [GhostType.PINKY]: { x: TILE_SIZE * 9.5, y: TILE_SIZE * 8.5 },    // Center
+  [GhostType.INKY]: { x: TILE_SIZE * 10.5, y: TILE_SIZE * 8.5 },    // Center-right
+  [GhostType.CLYDE]: { x: TILE_SIZE * 11.5, y: TILE_SIZE * 8.5 },   // Right of center
 };
 
 /**
  * Ghost house location and exit point.
+ * For the 20x15 maze, using the center corridor as the "ghost house".
+ * Row 7 col 11 is walkable (exit point above the center).
  */
-const GHOST_HOUSE_CENTER = { tileX: 9, tileY: 7 };
-const GHOST_HOUSE_EXIT = { tileX: 9, tileY: 6 };
+const GHOST_HOUSE_CENTER = { tileX: 10, tileY: 8 };
+const GHOST_HOUSE_EXIT = { tileX: 11, tileY: 7 };
 
 /**
  * Release delays for each ghost (ms after game start).
