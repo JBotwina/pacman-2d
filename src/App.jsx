@@ -17,6 +17,7 @@ import {
 import { getUncollectedDots, DotType } from './game/Dots';
 import Player from './components/Player';
 import Ghost from './components/Ghost';
+import ScoreDisplay from './components/ScoreDisplay';
 import './App.css';
 
 const CANVAS_WIDTH = 400;
@@ -318,30 +319,11 @@ function App() {
     setPlayerDirection('right');
   };
 
-  const fps =
-    gameState.elapsedTime > 0
-      ? Math.round((gameState.frameCount / gameState.elapsedTime) * 1000)
-      : 0;
-
-  const dotsRemaining = gameState.dots.totalDots - gameState.dots.collectedDots;
-
   return (
     <div className="game-container">
       <h1 className="game-title">PAC-MAN</h1>
 
-      <div className="game-stats">
-        <div>Status: {gameState.status}</div>
-        <div>Score: {gameState.score}</div>
-        <div>Lives: {gameState.lives}</div>
-        <div>Level: {gameState.level}</div>
-        <div>Dots: {dotsRemaining} / {gameState.dots.totalDots}</div>
-        {gameState.ghostsVulnerable && (
-          <div style={{ color: '#2121de' }}>
-            POWER: {Math.ceil(gameState.vulnerabilityTimer / 1000)}s
-          </div>
-        )}
-        <div>FPS: {fps}</div>
-      </div>
+      <ScoreDisplay gameState={gameState} />
 
       <div className="game-controls">
         {gameState.status === GameStatus.IDLE && (

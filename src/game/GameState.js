@@ -38,8 +38,13 @@ export function createInitialState() {
 
   return {
     status: GameStatus.IDLE,
+    // Player 1 stats
     score: 0,
     lives: 3,
+    // Player 2 stats
+    player2Score: 0,
+    player2Lives: 3,
+    // Shared game state
     level: 1,
     elapsedTime: 0,
     frameCount: 0,
