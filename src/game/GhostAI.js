@@ -108,18 +108,20 @@ const GHOST_RELEASE_DELAYS = {
 
 /**
  * Mode timing constants (milliseconds).
+ * More aggressive: shorter scatter, longer chase
  */
 export const MODE_TIMINGS = {
-  scatter: 4000,    // 4 seconds of scatter (reduced for more aggression)
-  chase: 25000,     // 25 seconds of chase (increased for more aggression)
+  scatter: 2000,    // 2 seconds of scatter (short breathing room)
+  chase: 30000,     // 30 seconds of chase (aggressive hunting)
 };
 
 /**
  * Ghost speed in pixels per millisecond.
+ * Slightly faster for more aggressive gameplay.
  */
-const GHOST_SPEED = 0.12;
+const GHOST_SPEED = 0.14;
 const FRIGHTENED_SPEED = 0.08;
-const EATEN_SPEED = 0.2;
+const EATEN_SPEED = 0.25;
 
 /**
  * Speed for bouncing in ghost house (slower than normal movement).
@@ -303,14 +305,35 @@ export function calculateClydeTarget(playerPos, clydePos) {
 }
 
 /**
- * Gets the target tile for a ghost based on its type and current mode.
+ * Chooses the nearest player to target.
  * @param {object} ghost - Ghost state object
- * @param {object} playerPos - Player position {x, y}
- * @param {object} playerDir - Player direction {dx, dy}
+ * @param {object} player1Pos - Player 1 position {x, y}
+ * @param {object} player2Pos - Player 2 position {x, y} (can be null)
+ * @returns {object} The nearest player position
+ */
+function getNearestPlayer(ghost, player1Pos, player2Pos) {
+  if (!player2Pos) {
+    return player1Pos;
+  }
+
+  const dist1 = distanceSquared(ghost.x, ghost.y, player1Pos.x, player1Pos.y);
+  const dist2 = distanceSquared(ghost.x, ghost.y, player2Pos.x, player2Pos.y);
+
+  return dist1 <= dist2 ? player1Pos : player2Pos;
+}
+
+/**
+ * Gets the target tile for a ghost based on its type and current mode.
+ * Ghosts will target the nearest player in 2-player mode.
+ * @param {object} ghost - Ghost state object
+ * @param {object} player1Pos - Player 1 position {x, y}
+ * @param {object} player1Dir - Player 1 direction {dx, dy}
+ * @param {object} player2Pos - Player 2 position {x, y} (can be null)
+ * @param {object} player2Dir - Player 2 direction {dx, dy} (can be null)
  * @param {object} ghosts - All ghost states (needed for Inky)
  * @returns {object} Target tile {tileX, tileY}
  */
-export function getGhostTarget(ghost, playerPos, playerDir, ghosts) {
+export function getGhostTarget(ghost, player1Pos, player1Dir, player2Pos, player2Dir, ghosts) {
   // In scatter mode, return scatter corner
   if (ghost.mode === GhostMode.SCATTER) {
     return SCATTER_TARGETS[ghost.type];
@@ -326,24 +349,28 @@ export function getGhostTarget(ghost, playerPos, playerDir, ghosts) {
     return GHOST_HOUSE_CENTER;
   }
 
+  // Determine which player to target (nearest in 2P mode)
+  const targetPlayer = getNearestPlayer(ghost, player1Pos, player2Pos);
+  const targetDir = (targetPlayer === player2Pos && player2Dir) ? player2Dir : player1Dir;
+
   // Chase mode - use unique targeting for each ghost
   switch (ghost.type) {
     case GhostType.BLINKY:
-      return calculateBlinkyTarget(playerPos);
+      return calculateBlinkyTarget(targetPlayer);
 
     case GhostType.PINKY:
-      return calculatePinkyTarget(playerPos, playerDir);
+      return calculatePinkyTarget(targetPlayer, targetDir);
 
     case GhostType.INKY: {
       const blinky = ghosts[GhostType.BLINKY];
-      return calculateInkyTarget(playerPos, playerDir, blinky);
+      return calculateInkyTarget(targetPlayer, targetDir, blinky);
     }
 
     case GhostType.CLYDE:
-      return calculateClydeTarget(playerPos, ghost);
+      return calculateClydeTarget(targetPlayer, ghost);
 
     default:
-      return calculateBlinkyTarget(playerPos);
+      return calculateBlinkyTarget(targetPlayer);
   }
 }
 
@@ -412,14 +439,16 @@ function isAtTileCenter(x, y, threshold = 2) {
  * Updates a single ghost's position and direction.
  * @param {object} ghost - Ghost state
  * @param {number[][]} maze - The maze grid
- * @param {object} playerPos - Player position
- * @param {object} playerDir - Player direction
+ * @param {object} player1Pos - Player 1 position
+ * @param {object} player1Dir - Player 1 direction
+ * @param {object} player2Pos - Player 2 position (can be null)
+ * @param {object} player2Dir - Player 2 direction (can be null)
  * @param {object} ghosts - All ghost states
  * @param {number} deltaTime - Time since last update in ms
  * @param {string} globalMode - Current global mode (SCATTER or CHASE)
  * @returns {object} Updated ghost state
  */
-export function updateGhost(ghost, maze, playerPos, playerDir, ghosts, deltaTime, globalMode) {
+export function updateGhost(ghost, maze, player1Pos, player1Dir, player2Pos, player2Dir, ghosts, deltaTime, globalMode) {
   let updatedGhost = { ...ghost };
 
   // Handle ghost house behavior
@@ -520,7 +549,7 @@ export function updateGhost(ghost, maze, playerPos, playerDir, ghosts, deltaTime
   // Check if at tile center (decision point)
   if (isAtTileCenter(updatedGhost.x, updatedGhost.y)) {
     // Calculate target and choose direction
-    const targetTile = getGhostTarget(updatedGhost, playerPos, playerDir, ghosts);
+    const targetTile = getGhostTarget(updatedGhost, player1Pos, player1Dir, player2Pos, player2Dir, ghosts);
     const newDirection = chooseBestDirection(updatedGhost, maze, targetTile);
 
     updatedGhost.direction = newDirection;
@@ -546,21 +575,25 @@ export function updateGhost(ghost, maze, playerPos, playerDir, ghosts, deltaTime
  * Updates all ghosts.
  * @param {object} ghosts - All ghost states
  * @param {number[][]} maze - The maze grid
- * @param {object} playerPos - Player position
- * @param {object} playerDir - Player direction
+ * @param {object} player1Pos - Player 1 position
+ * @param {object} player1Dir - Player 1 direction
+ * @param {object} player2Pos - Player 2 position (can be null)
+ * @param {object} player2Dir - Player 2 direction (can be null)
  * @param {number} deltaTime - Time since last update in ms
  * @param {string} globalMode - Current global mode (SCATTER or CHASE)
  * @returns {object} Updated ghost states
  */
-export function updateAllGhosts(ghosts, maze, playerPos, playerDir, deltaTime, globalMode = GhostMode.SCATTER) {
+export function updateAllGhosts(ghosts, maze, player1Pos, player1Dir, player2Pos, player2Dir, deltaTime, globalMode = GhostMode.SCATTER) {
   const updatedGhosts = {};
 
   for (const type of Object.keys(ghosts)) {
     updatedGhosts[type] = updateGhost(
       ghosts[type],
       maze,
-      playerPos,
-      playerDir,
+      player1Pos,
+      player1Dir,
+      player2Pos,
+      player2Dir,
       ghosts,
       deltaTime,
       globalMode

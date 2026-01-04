@@ -51,10 +51,10 @@ export const GameMode = {
 };
 
 // Frightened mode constants
-export const FRIGHTENED_DURATION = 8000; // 8 seconds of frightened mode
+export const FRIGHTENED_DURATION = 7000; // 7 seconds of frightened mode
 export const FRIGHTENED_FLASH_TIME = 2000; // Flash for last 2 seconds
 export const FRIGHTENED_SPEED_MULTIPLIER = 0.5; // Ghosts move at half speed when frightened
-export const VULNERABILITY_DURATION = 10000; // Alias for compatibility
+export const VULNERABILITY_DURATION = 7000; // 7 seconds vulnerability
 
 // Ghost configuration
 export const GHOST_NAMES = ['blinky', 'pinky', 'inky', 'clyde'];
@@ -279,47 +279,41 @@ export function updateGameState(state, deltaTime) {
     }
   }
 
-  // Update ghost positions and AI (only for non-eaten ghosts)
-  const ghostsToUpdate = {};
-  for (const ghostType of Object.keys(updatedGhosts)) {
-    if (updatedGhosts[ghostType].mode !== GhostMode.EATEN) {
-      ghostsToUpdate[ghostType] = updatedGhosts[ghostType];
-    }
-  }
-
   // Pass FRIGHTENED as release mode when ghosts are vulnerable,
   // so ghosts released from house enter frightened mode
   const releaseMode = ghostsVulnerable ? GhostMode.FRIGHTENED : globalMode;
-  const movedGhosts = updateAllGhosts(
-    ghostsToUpdate,
+
+  // Get player 2 info for 2-player mode (ghosts will target nearest player)
+  const player2Pos = state.gameMode === GameMode.TWO_PLAYER ? state.player2 : null;
+  const player2Dir = state.gameMode === GameMode.TWO_PLAYER ? state.player2.direction : null;
+
+  // Update all ghosts including eaten ones (so their eyes return to pen)
+  updatedGhosts = updateAllGhosts(
+    updatedGhosts,
     state.maze,
     state.player,
     state.player.direction,
+    player2Pos,
+    player2Dir,
     deltaTime,
     releaseMode
   );
 
-  // Merge moved ghosts with eaten ghosts
-  for (const ghostType of Object.keys(updatedGhosts)) {
-    if (updatedGhosts[ghostType].mode === GhostMode.EATEN) {
-      movedGhosts[ghostType] = updatedGhosts[ghostType];
-    }
-  }
-  updatedGhosts = movedGhosts;
-
   // Check player-ghost collision
   let lives = state.lives;
+  let player2Lives = state.player2Lives;
   let finalScore = newScore;
   let finalPlayer2Score = newPlayer2Score;
   let finalStatus = newStatus;
   let player = state.player;
   let deathAnimationTimer = state.deathAnimationTimer;
 
+  // Check Player 1 collision with ghosts
   const collision = checkGhostCollision(updatedGhosts, state.player.x, state.player.y);
 
   if (collision.collision) {
     if (collision.canEat) {
-      // Player eats frightened ghost
+      // Player 1 eats frightened ghost
       updatedGhosts = markGhostEaten(updatedGhosts, collision.ghostType);
       const pointIndex = Math.min(ghostsEatenDuringFrightened, GHOST_EAT_POINTS.length - 1);
       finalScore += GHOST_EAT_POINTS[pointIndex];
@@ -327,10 +321,35 @@ export function updateGameState(state, deltaTime) {
       // Start respawn timer for eaten ghost
       ghostRespawnTimers[collision.ghostType] = GHOST_RESPAWN_DELAY;
     } else {
-      // Ghost catches player - start death animation
+      // Ghost catches player 1 - start death animation
       lives -= 1;
       finalStatus = GameStatus.DYING;
       deathAnimationTimer = DEATH_ANIMATION_DURATION;
+    }
+  }
+
+  // Check Player 2 collision with ghosts (in 2P mode)
+  if (state.gameMode === GameMode.TWO_PLAYER && finalStatus !== GameStatus.DYING) {
+    const collision2 = checkGhostCollision(updatedGhosts, state.player2.x, state.player2.y);
+
+    if (collision2.collision) {
+      if (collision2.canEat) {
+        // Player 2 eats frightened ghost
+        updatedGhosts = markGhostEaten(updatedGhosts, collision2.ghostType);
+        const pointIndex = Math.min(ghostsEatenDuringFrightened, GHOST_EAT_POINTS.length - 1);
+        finalPlayer2Score += GHOST_EAT_POINTS[pointIndex];
+        ghostsEatenDuringFrightened += 1;
+        // Start respawn timer for eaten ghost
+        ghostRespawnTimers[collision2.ghostType] = GHOST_RESPAWN_DELAY;
+      } else {
+        // Ghost catches player 2 - lose a life
+        player2Lives -= 1;
+        // In 2P mode, game continues if either player has lives
+        if (lives <= 0 && player2Lives <= 0) {
+          finalStatus = GameStatus.GAME_OVER;
+        }
+        // TODO: Could add player 2 death animation/respawn logic
+      }
     }
   }
 
@@ -360,6 +379,7 @@ export function updateGameState(state, deltaTime) {
     player2Score: finalPlayer2Score,
     status: finalStatus,
     lives,
+    player2Lives,
     player,
     ghosts: updatedGhosts,
     globalMode,
