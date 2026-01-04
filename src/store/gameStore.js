@@ -15,6 +15,7 @@ import {
   updatePlayer2Position as updatePlayer2PositionPure,
   updateGameState,
   updateDeathAnimation,
+  nextLevel as nextLevelPure,
   GameStatus,
 } from '../game/GameState.js';
 
@@ -61,6 +62,11 @@ export const useGameStore = create((set) => ({
    * Resets the game to initial state, preserving high score.
    */
   resetGame: () => set((state) => resetGamePure(state.highScore)),
+
+  /**
+   * Advances to the next level, resetting maze/dots/ghosts while preserving score/lives.
+   */
+  nextLevel: () => set((state) => nextLevelPure(state)),
 
   // ============================================
   // Game Mode Actions
