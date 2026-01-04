@@ -2,7 +2,7 @@
 // 0 = empty path, 1 = wall, 2 = dot, 3 = power pellet
 // Classic Pac-Man style layout (28x31 tiles)
 
-export const TILE_SIZE = 32;
+export const TILE_SIZE = 48;
 
 export const TILE_TYPES = {
   EMPTY: 0,

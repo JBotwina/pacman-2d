@@ -56,33 +56,45 @@ const SCATTER_TARGETS = {
 
 /**
  * Starting positions for ghosts (pixel coordinates).
- * Ghost house is at row 8, columns 9-12 in the 20x15 maze.
+ * Ghost house is near the center of the 20x15 maze.
  * Ghosts spawn inside the ghost pen and bounce around before release.
  */
 export const GHOST_START_POSITIONS = {
-  [GhostType.BLINKY]: { x: TILE_SIZE * 10, y: TILE_SIZE * 7.5 },    // Center of ghost house
+  [GhostType.BLINKY]: { x: TILE_SIZE * 10, y: TILE_SIZE * 7.5 },    // Center-ish of ghost house
   [GhostType.PINKY]: { x: TILE_SIZE * 10, y: TILE_SIZE * 7.5 },     // Same position (Blinky exits first)
-  [GhostType.INKY]: { x: TILE_SIZE * 9, y: TILE_SIZE * 7.5 },       // Left side of ghost house
-  [GhostType.CLYDE]: { x: TILE_SIZE * 11, y: TILE_SIZE * 7.5 },     // Right side of ghost house
+  [GhostType.INKY]: { x: TILE_SIZE * 9, y: TILE_SIZE * 7.5 },       // Left side
+  [GhostType.CLYDE]: { x: TILE_SIZE * 11, y: TILE_SIZE * 7.5 },     // Right side
 };
 
 /**
  * Ghost house boundaries for bouncing behavior.
- * The ghost house interior is row 7-8, columns 8-12 in the 20x15 maze.
+ * Expanded ghost pen (pixel bounds) so ghosts have more room before release.
  */
 const GHOST_HOUSE_BOUNDS = {
-  minX: TILE_SIZE * 8.5,
-  maxX: TILE_SIZE * 12.5,
-  minY: TILE_SIZE * 7,
-  maxY: TILE_SIZE * 8,
+  minX: TILE_SIZE * 6.5,
+  maxX: TILE_SIZE * 13.5,
+  minY: TILE_SIZE * 6.5,
+  maxY: TILE_SIZE * 8.5,
 };
 
 /**
  * Ghost house location and exit point.
- * Exit is at row 6, column 11 (above the ghost house area).
+ * Exit is above the ghost house area.
  */
 const GHOST_HOUSE_CENTER = { tileX: 11, tileY: 7.5 };
 const GHOST_HOUSE_EXIT = { tileX: 11, tileY: 6 };
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getNormalizedDirection(dx, dy) {
+  const length = Math.hypot(dx, dy);
+  if (length <= 0) {
+    return { dx: 0, dy: 0 };
+  }
+  return { dx: dx / length, dy: dy / length };
+}
 
 /**
  * Release delays for each ghost (ms after game start).
@@ -98,8 +110,8 @@ const GHOST_RELEASE_DELAYS = {
  * Mode timing constants (milliseconds).
  */
 export const MODE_TIMINGS = {
-  scatter: 7000,    // 7 seconds of scatter
-  chase: 20000,     // 20 seconds of chase
+  scatter: 4000,    // 4 seconds of scatter (reduced for more aggression)
+  chase: 25000,     // 25 seconds of chase (increased for more aggression)
 };
 
 /**
@@ -125,10 +137,10 @@ export function createGhost(type) {
 
   // Each ghost starts bouncing in a different direction for visual variety
   const bounceDirections = {
-    [GhostType.BLINKY]: Direction.UP,
-    [GhostType.PINKY]: Direction.DOWN,
-    [GhostType.INKY]: Direction.UP,
-    [GhostType.CLYDE]: Direction.DOWN,
+    [GhostType.BLINKY]: { dx: 1, dy: -1 },
+    [GhostType.PINKY]: { dx: -1, dy: 1 },
+    [GhostType.INKY]: { dx: -1, dy: -1 },
+    [GhostType.CLYDE]: { dx: 1, dy: 1 },
   };
 
   return {
@@ -136,7 +148,7 @@ export function createGhost(type) {
     x: startPos.x,
     y: startPos.y,
     direction: Direction.UP, // Initial direction when released
-    bounceDirection: bounceDirections[type] || Direction.UP, // Direction for bouncing in house
+    bounceDirection: bounceDirections[type] || { dx: 0, dy: -1 }, // Direction for bouncing in house
     mode: GhostMode.IN_HOUSE,
     previousMode: GhostMode.SCATTER,
     targetTile: { tileX: 0, tileY: 0 },
@@ -281,8 +293,8 @@ export function calculateClydeTarget(playerPos, clydePos) {
     playerTile.tileX, playerTile.tileY
   ));
 
-  // If more than 8 tiles away, chase directly
-  if (distance > 8) {
+  // If more than 5 tiles away, chase directly (reduced from 8 for more aggression)
+  if (distance > 5) {
     return playerTile;
   }
 
@@ -447,20 +459,34 @@ export function updateGhost(ghost, maze, playerPos, playerDir, ghosts, deltaTime
       updatedGhost.direction = Direction.UP; // Start moving up out of the gate
       updatedGhost.isExiting = false;
     } else {
-      // Still waiting - bounce up and down in the house
+      // Still waiting - bounce around inside the house (both X and Y) for a larger pen feel
       const moveAmount = IN_HOUSE_SPEED * deltaTime;
-      let newY = updatedGhost.y + updatedGhost.bounceDirection.dy * moveAmount;
+      const normalized = getNormalizedDirection(
+        updatedGhost.bounceDirection.dx ?? 0,
+        updatedGhost.bounceDirection.dy ?? 0
+      );
 
-      // Reverse direction at boundaries
-      if (newY <= GHOST_HOUSE_BOUNDS.minY) {
-        newY = GHOST_HOUSE_BOUNDS.minY;
-        updatedGhost.bounceDirection = Direction.DOWN;
-      } else if (newY >= GHOST_HOUSE_BOUNDS.maxY) {
-        newY = GHOST_HOUSE_BOUNDS.maxY;
-        updatedGhost.bounceDirection = Direction.UP;
+      let newX = updatedGhost.x + normalized.dx * moveAmount;
+      let newY = updatedGhost.y + normalized.dy * moveAmount;
+
+      if (newX <= GHOST_HOUSE_BOUNDS.minX) {
+        newX = GHOST_HOUSE_BOUNDS.minX;
+        updatedGhost.bounceDirection.dx = Math.abs(updatedGhost.bounceDirection.dx ?? 1);
+      } else if (newX >= GHOST_HOUSE_BOUNDS.maxX) {
+        newX = GHOST_HOUSE_BOUNDS.maxX;
+        updatedGhost.bounceDirection.dx = -Math.abs(updatedGhost.bounceDirection.dx ?? 1);
       }
 
-      updatedGhost.y = newY;
+      if (newY <= GHOST_HOUSE_BOUNDS.minY) {
+        newY = GHOST_HOUSE_BOUNDS.minY;
+        updatedGhost.bounceDirection.dy = Math.abs(updatedGhost.bounceDirection.dy ?? 1);
+      } else if (newY >= GHOST_HOUSE_BOUNDS.maxY) {
+        newY = GHOST_HOUSE_BOUNDS.maxY;
+        updatedGhost.bounceDirection.dy = -Math.abs(updatedGhost.bounceDirection.dy ?? 1);
+      }
+
+      updatedGhost.x = clamp(newX, GHOST_HOUSE_BOUNDS.minX, GHOST_HOUSE_BOUNDS.maxX);
+      updatedGhost.y = clamp(newY, GHOST_HOUSE_BOUNDS.minY, GHOST_HOUSE_BOUNDS.maxY);
       return updatedGhost;
     }
   }
@@ -477,7 +503,7 @@ export function updateGhost(ghost, maze, playerPos, playerDir, ghosts, deltaTime
       updatedGhost.x = ghostHouseCenterX;
       updatedGhost.y = GHOST_HOUSE_CENTER.tileY * TILE_SIZE; // Center Y of ghost house
       updatedGhost.timeInHouse = updatedGhost.releaseDelay - 1000; // Quick respawn
-      updatedGhost.bounceDirection = Direction.UP;
+      updatedGhost.bounceDirection = { dx: 1, dy: -1 };
       updatedGhost.isExiting = false;
       return updatedGhost;
     }

@@ -20,7 +20,6 @@ import {
   GHOST_EAT_POINTS,
   DEATH_ANIMATION_DURATION,
 } from './game/GameState';
-import { MAZE_WIDTH, MAZE_HEIGHT } from './data/maze';
 import { getUncollectedDots, DotType } from './game/Dots';
 import { getFruitData, FRUIT_SPAWN_TILE } from './game/Fruit';
 import Player from './components/Player';
@@ -35,12 +34,18 @@ import './App.css';
 import './components/Menu.css';
 
 // Note: Player and Ghost components not used directly in canvas-based rendering
-
-// Canvas dimensions based on actual maze size
-const CANVAS_WIDTH = MAZE_WIDTH * TILE_SIZE;
-const CANVAS_HEIGHT = MAZE_HEIGHT * TILE_SIZE;
 const PLAYER_SPEED = 4; // tiles per second for grid-based movement
 const PLAYER_SIZE = TILE_SIZE - 4; // Player hitbox size (slightly smaller than tile)
+
+function getMazePixelSize(maze) {
+  const rows = maze?.length ?? 0;
+  const cols = maze?.[0]?.length ?? 0;
+
+  return {
+    width: cols * TILE_SIZE,
+    height: rows * TILE_SIZE,
+  };
+}
 
 // Neon colors for maze rendering
 const WALL_COLOR = '#2121de';
@@ -238,10 +243,11 @@ function App() {
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
+    const { width: canvasWidth, height: canvasHeight } = getMazePixelSize(gameState.maze);
 
     // Clear canvas
     ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // Draw maze walls with neon glow
     for (let y = 0; y < gameState.maze.length; y++) {
@@ -553,6 +559,8 @@ function App() {
     setPlayer2Direction('left');
   };
 
+  const { width: canvasWidth, height: canvasHeight } = getMazePixelSize(gameState.maze);
+
   return (
     <div className="game-container">
       <h1 className="game-title">PAC-MAN</h1>
@@ -564,8 +572,8 @@ function App() {
       <div className="game-area">
         <canvas
           ref={canvasRef}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
+          width={canvasWidth}
+          height={canvasHeight}
           className="game-canvas"
           tabIndex={0}
         />

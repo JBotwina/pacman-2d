@@ -64,10 +64,9 @@
     inset 0 0 10px rgba(33, 33, 222, 0.3);
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  /* Fill viewport while maintaining aspect ratio */
-  width: 100vw;
-  height: 100vh;
-  object-fit: contain;
+  display: block;
+  max-width: 100vw;
+  max-height: 100vh;
 }
 
 .game-canvas:focus {

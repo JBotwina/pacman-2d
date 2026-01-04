@@ -144,6 +144,7 @@ export function updateDeathAnimation(state, deltaTime) {
       };
     } else {
       // Respawn player at tile (2, 4) - avoids power pellet at (1,1)
+      // Ghosts keep their positions (no reset) for more challenge
       return {
         ...state,
         status: GameStatus.RUNNING,
@@ -153,12 +154,9 @@ export function updateDeathAnimation(state, deltaTime) {
           y: TILE_SIZE * 4.5,
           direction: Direction.RIGHT,
         },
-        ghosts: resetGhosts(),
+        // Keep ghosts in their current positions - don't reset them
         ghostsVulnerable: false,
         vulnerabilityTimer: 0,
-        modeTimer: 0,
-        globalMode: GhostMode.SCATTER,
-        ghostRespawnTimers: {},
       };
     }
   }
