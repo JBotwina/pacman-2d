@@ -45,44 +45,44 @@ export const Direction = {
 /**
  * Scatter corner targets for each ghost (tile coordinates).
  * These are the corners ghosts retreat to in scatter mode.
- * For the 28x31 maze: row 1 and row 29 are walkable near corners.
+ * For the 20x15 maze: corners are at row 1 and row 13.
  */
 const SCATTER_TARGETS = {
-  [GhostType.BLINKY]: { tileX: 26, tileY: 1 },   // Top-right
+  [GhostType.BLINKY]: { tileX: 18, tileY: 1 },   // Top-right
   [GhostType.PINKY]: { tileX: 1, tileY: 1 },     // Top-left
-  [GhostType.INKY]: { tileX: 26, tileY: 29 },    // Bottom-right
-  [GhostType.CLYDE]: { tileX: 1, tileY: 29 },    // Bottom-left
+  [GhostType.INKY]: { tileX: 18, tileY: 13 },    // Bottom-right
+  [GhostType.CLYDE]: { tileX: 1, tileY: 13 },    // Bottom-left
 };
 
 /**
  * Starting positions for ghosts (pixel coordinates).
- * Ghost house is at rows 13-15, columns 11-17 in the 28x31 maze.
+ * Ghost house is at row 8, columns 9-12 in the 20x15 maze.
  * Ghosts spawn inside the ghost pen and bounce around before release.
  */
 export const GHOST_START_POSITIONS = {
-  [GhostType.BLINKY]: { x: TILE_SIZE * 14, y: TILE_SIZE * 14.5 },   // Center of ghost house
-  [GhostType.PINKY]: { x: TILE_SIZE * 14, y: TILE_SIZE * 14.5 },    // Same position (Blinky exits first)
-  [GhostType.INKY]: { x: TILE_SIZE * 12.5, y: TILE_SIZE * 14.5 },   // Left side of ghost house
-  [GhostType.CLYDE]: { x: TILE_SIZE * 15.5, y: TILE_SIZE * 14.5 },  // Right side of ghost house
+  [GhostType.BLINKY]: { x: TILE_SIZE * 10, y: TILE_SIZE * 7.5 },    // Center of ghost house
+  [GhostType.PINKY]: { x: TILE_SIZE * 10, y: TILE_SIZE * 7.5 },     // Same position (Blinky exits first)
+  [GhostType.INKY]: { x: TILE_SIZE * 9, y: TILE_SIZE * 7.5 },       // Left side of ghost house
+  [GhostType.CLYDE]: { x: TILE_SIZE * 11, y: TILE_SIZE * 7.5 },     // Right side of ghost house
 };
 
 /**
  * Ghost house boundaries for bouncing behavior.
- * The ghost house interior is rows 13-15, columns 11-17.
+ * The ghost house interior is row 7-8, columns 8-12 in the 20x15 maze.
  */
 const GHOST_HOUSE_BOUNDS = {
-  minX: TILE_SIZE * 11.5,
-  maxX: TILE_SIZE * 16.5,
-  minY: TILE_SIZE * 13.5,
-  maxY: TILE_SIZE * 15.5,
+  minX: TILE_SIZE * 8.5,
+  maxX: TILE_SIZE * 12.5,
+  minY: TILE_SIZE * 7,
+  maxY: TILE_SIZE * 8,
 };
 
 /**
  * Ghost house location and exit point.
- * Exit is at the gate opening (row 12, columns 13-14).
+ * Exit is at row 6, column 11 (above the ghost house area).
  */
-const GHOST_HOUSE_CENTER = { tileX: 14, tileY: 14 };
-const GHOST_HOUSE_EXIT = { tileX: 14, tileY: 11.5 };
+const GHOST_HOUSE_CENTER = { tileX: 11, tileY: 7.5 };
+const GHOST_HOUSE_EXIT = { tileX: 11, tileY: 6 };
 
 /**
  * Release delays for each ghost (ms after game start).
@@ -421,8 +421,9 @@ export function updateGhost(ghost, maze, playerPos, playerDir, ghosts, deltaTime
       }
 
       // Move toward center X first, then up to exit
-      const exitX = GHOST_HOUSE_EXIT.tileX * TILE_SIZE;
-      const exitY = GHOST_HOUSE_EXIT.tileY * TILE_SIZE;
+      // Exit position is at tile CENTER (add TILE_SIZE/2)
+      const exitX = GHOST_HOUSE_EXIT.tileX * TILE_SIZE + TILE_SIZE / 2;
+      const exitY = GHOST_HOUSE_EXIT.tileY * TILE_SIZE + TILE_SIZE / 2;
       const moveAmount = IN_HOUSE_SPEED * deltaTime * 2; // Faster exit movement
 
       // First, align to center X
@@ -443,7 +444,7 @@ export function updateGhost(ghost, maze, playerPos, playerDir, ghosts, deltaTime
       updatedGhost.mode = globalMode;
       updatedGhost.x = exitX;
       updatedGhost.y = exitY;
-      updatedGhost.direction = Direction.LEFT; // Start moving left out of the gate
+      updatedGhost.direction = Direction.UP; // Start moving up out of the gate
       updatedGhost.isExiting = false;
     } else {
       // Still waiting - bounce up and down in the house
@@ -466,7 +467,7 @@ export function updateGhost(ghost, maze, playerPos, playerDir, ghosts, deltaTime
 
   // Handle eaten ghost returning to house
   if (updatedGhost.mode === GhostMode.EATEN) {
-    const ghostHouseCenterX = GHOST_HOUSE_CENTER.tileX * TILE_SIZE;
+    const ghostHouseCenterX = GHOST_HOUSE_CENTER.tileX * TILE_SIZE + TILE_SIZE / 2;
     const ghostHouseCenterY = GHOST_HOUSE_CENTER.tileY * TILE_SIZE;
     const distToCenter = Math.abs(updatedGhost.x - ghostHouseCenterX) + Math.abs(updatedGhost.y - ghostHouseCenterY);
 
@@ -474,7 +475,7 @@ export function updateGhost(ghost, maze, playerPos, playerDir, ghosts, deltaTime
       // Reached house, respawn after short delay
       updatedGhost.mode = GhostMode.IN_HOUSE;
       updatedGhost.x = ghostHouseCenterX;
-      updatedGhost.y = TILE_SIZE * 14.5; // Center Y of ghost house
+      updatedGhost.y = GHOST_HOUSE_CENTER.tileY * TILE_SIZE; // Center Y of ghost house
       updatedGhost.timeInHouse = updatedGhost.releaseDelay - 1000; // Quick respawn
       updatedGhost.bounceDirection = Direction.UP;
       updatedGhost.isExiting = false;
