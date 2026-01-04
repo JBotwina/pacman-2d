@@ -3,7 +3,11 @@
  * Displays title, controls, and start prompt.
  */
 
-export default function StartScreen({ onStart, gameMode }) {
+import { useGameStore } from '../store';
+
+export default function StartScreen() {
+  const gameMode = useGameStore((state) => state.gameMode);
+  const startGame = useGameStore((state) => state.startGame);
   const isTwoPlayer = gameMode === '2P';
 
   return (
@@ -64,7 +68,7 @@ export default function StartScreen({ onStart, gameMode }) {
         </div>
       </div>
 
-      <button className="start-button" onClick={onStart}>
+      <button className="start-button" onClick={startGame}>
         START GAME
       </button>
 

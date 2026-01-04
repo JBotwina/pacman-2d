@@ -3,7 +3,13 @@
  * Displays final score and options to play again.
  */
 
-export default function GameOverScreen({ score, level, onRestart }) {
+import { useGameStore } from '../store';
+
+export default function GameOverScreen() {
+  const score = useGameStore((state) => state.score);
+  const level = useGameStore((state) => state.level);
+  const resetGame = useGameStore((state) => state.resetGame);
+
   return (
     <div className="menu-overlay game-over-screen">
       <h2 className="game-over-title">GAME OVER</h2>
@@ -19,7 +25,7 @@ export default function GameOverScreen({ score, level, onRestart }) {
         </div>
       </div>
 
-      <button className="menu-button restart-button" onClick={onRestart}>
+      <button className="menu-button restart-button" onClick={resetGame}>
         PLAY AGAIN
       </button>
 

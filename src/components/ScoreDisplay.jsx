@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { useGameStore } from '../store';
 import './ScoreDisplay.css';
 
 /**
@@ -96,15 +97,13 @@ function useAnimatedScore(targetScore) {
   return { displayedScore, isAnimating };
 }
 
-function ScoreDisplay({ gameState }) {
-  const {
-    score,
-    highScore,
-    lives,
-    player2Score,
-    player2Lives,
-    level,
-  } = gameState;
+function ScoreDisplay() {
+  const score = useGameStore((state) => state.score);
+  const highScore = useGameStore((state) => state.highScore);
+  const lives = useGameStore((state) => state.lives);
+  const player2Score = useGameStore((state) => state.player2Score);
+  const player2Lives = useGameStore((state) => state.player2Lives);
+  const level = useGameStore((state) => state.level);
 
   const { displayedScore: p1DisplayedScore, isAnimating: p1Animating } = useAnimatedScore(score);
   const { displayedScore: p2DisplayedScore, isAnimating: p2Animating } = useAnimatedScore(player2Score);

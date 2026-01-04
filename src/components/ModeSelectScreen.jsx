@@ -3,7 +3,11 @@
  * Allows player to choose between 1-player and 2-player mode.
  */
 
-export default function ModeSelectScreen({ onSelectMode }) {
+import { useGameStore } from '../store';
+
+export default function ModeSelectScreen() {
+  const setGameMode = useGameStore((state) => state.setGameMode);
+
   return (
     <div className="menu-overlay mode-select-screen">
       <h1 className="menu-title">PAC-MAN</h1>
@@ -14,7 +18,7 @@ export default function ModeSelectScreen({ onSelectMode }) {
         <div className="mode-buttons">
           <button
             className="mode-button mode-1p"
-            onClick={() => onSelectMode('1P')}
+            onClick={() => setGameMode('1P')}
           >
             <span className="mode-icon">🟡</span>
             <span className="mode-label">1 PLAYER</span>
@@ -23,7 +27,7 @@ export default function ModeSelectScreen({ onSelectMode }) {
 
           <button
             className="mode-button mode-2p"
-            onClick={() => onSelectMode('2P')}
+            onClick={() => setGameMode('2P')}
           >
             <span className="mode-icon">🟡🔵</span>
             <span className="mode-label">2 PLAYERS</span>

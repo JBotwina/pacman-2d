@@ -18,13 +18,25 @@ import {
   GameStatus,
 } from '../game/GameState.js';
 
+// localStorage key for high score persistence
+const HIGH_SCORE_KEY = 'pacman-high-score';
+
+function loadHighScore() {
+  try {
+    const saved = localStorage.getItem(HIGH_SCORE_KEY);
+    return saved ? parseInt(saved, 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
 /**
  * Creates the game store with initial state and actions.
  * Actions delegate to pure functions from GameState.js for testability.
  */
 export const useGameStore = create((set) => ({
-  // Initialize with default state
-  ...createInitialState(),
+  // Initialize with default state and persisted high score
+  ...createInitialState(loadHighScore()),
 
   // ============================================
   // Game Lifecycle Actions

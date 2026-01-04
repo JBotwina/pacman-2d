@@ -1,29 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useGameLoop } from './hooks/useGameLoop';
 import { usePlayerMovement } from './hooks/usePlayerMovement';
+import { useGameStore, GameStatus, GameMode } from './store';
 import {
-  createInitialState,
-  updateGameState,
-  updateDeathAnimation,
-  updatePlayerPosition,
-  updatePlayer2Position,
-  startGame,
-  pauseGame,
-  resumeGame,
-  resetGame,
-  setGameMode,
-  GameStatus,
-  GameMode,
   TILE_SIZE,
   Direction,
   GhostMode,
-  GHOST_EAT_POINTS,
   DEATH_ANIMATION_DURATION,
 } from './game/GameState';
 import { getUncollectedDots, DotType } from './game/Dots';
 import { getFruitData, FRUIT_SPAWN_TILE } from './game/Fruit';
-import Player from './components/Player';
-import Ghost from './components/Ghost';
 import ScoreDisplay from './components/ScoreDisplay';
 import ModeSelectScreen from './components/ModeSelectScreen';
 import StartScreen from './components/StartScreen';
@@ -33,9 +19,7 @@ import LevelCompleteScreen from './components/LevelCompleteScreen';
 import './App.css';
 import './components/Menu.css';
 
-// Note: Player and Ghost components not used directly in canvas-based rendering
 const PLAYER_SPEED = 4; // tiles per second for grid-based movement
-const PLAYER_SIZE = TILE_SIZE - 4; // Player hitbox size (slightly smaller than tile)
 
 function getMazePixelSize(maze) {
   const rows = maze?.length ?? 0;
@@ -65,15 +49,6 @@ const GHOST_COLORS = {
 // localStorage key for high score
 const HIGH_SCORE_KEY = 'pacman-high-score';
 
-function loadHighScore() {
-  try {
-    const saved = localStorage.getItem(HIGH_SCORE_KEY);
-    return saved ? parseInt(saved, 10) : 0;
-  } catch {
-    return 0;
-  }
-}
-
 function saveHighScore(score) {
   try {
     localStorage.setItem(HIGH_SCORE_KEY, score.toString());
@@ -83,7 +58,19 @@ function saveHighScore(score) {
 }
 
 function App() {
-  const [gameState, setGameState] = useState(() => createInitialState(loadHighScore()));
+  // Get state and actions from store
+  const gameState = useGameStore();
+  const {
+    startGame,
+    pauseGame,
+    resumeGame,
+    resetGame,
+    setGameMode,
+    updatePlayerPosition,
+    updatePlayer2Position,
+    tick,
+  } = useGameStore();
+
   const [playerDirection, setPlayerDirection] = useState('right');
   const [player2Direction, setPlayer2Direction] = useState('left');
   const canvasRef = useRef(null);
@@ -117,52 +104,45 @@ function App() {
 
       // Handle menu controls
       if (e.key === 'Escape') {
-        setGameState((state) => {
-          if (state.status === GameStatus.RUNNING) {
-            return pauseGame(state);
-          } else if (state.status === GameStatus.PAUSED) {
-            return resumeGame(state);
-          }
-          return state;
-        });
+        const state = useGameStore.getState();
+        if (state.status === GameStatus.RUNNING) {
+          pauseGame();
+        } else if (state.status === GameStatus.PAUSED) {
+          resumeGame();
+        }
       }
 
       if (e.key === 'Enter') {
-        setGameState((state) => {
-          if (state.status === GameStatus.IDLE) {
-            return startGame(state);
-          } else if (state.status === GameStatus.PAUSED) {
-            return resumeGame(state);
-          } else if (state.status === GameStatus.GAME_OVER || state.status === GameStatus.LEVEL_COMPLETE) {
-            const newState = resetGame(state.highScore);
-            playerMovement.setPosition(newState.player.x, newState.player.y);
-            playerMovement.setDirection('right');
-            setPlayerDirection('right');
-            player2Movement.setPosition(newState.player2.x, newState.player2.y);
-            player2Movement.setDirection('left');
-            setPlayer2Direction('left');
-            return startGame(newState);
-          }
-          return state;
-        });
+        const state = useGameStore.getState();
+        if (state.status === GameStatus.IDLE) {
+          startGame();
+        } else if (state.status === GameStatus.PAUSED) {
+          resumeGame();
+        } else if (state.status === GameStatus.GAME_OVER || state.status === GameStatus.LEVEL_COMPLETE) {
+          resetGame();
+          const newState = useGameStore.getState();
+          playerMovement.setPosition(newState.player.x, newState.player.y);
+          playerMovement.setDirection('right');
+          setPlayerDirection('right');
+          player2Movement.setPosition(newState.player2.x, newState.player2.y);
+          player2Movement.setDirection('left');
+          setPlayer2Direction('left');
+          startGame();
+        }
       }
 
       // Mode selection with 1/2 keys
       if (e.key === '1') {
-        setGameState((state) => {
-          if (state.status === GameStatus.MODE_SELECT) {
-            return setGameMode(state, GameMode.SINGLE_PLAYER);
-          }
-          return state;
-        });
+        const state = useGameStore.getState();
+        if (state.status === GameStatus.MODE_SELECT) {
+          setGameMode(GameMode.SINGLE_PLAYER);
+        }
       }
       if (e.key === '2') {
-        setGameState((state) => {
-          if (state.status === GameStatus.MODE_SELECT) {
-            return setGameMode(state, GameMode.TWO_PLAYER);
-          }
-          return state;
-        });
+        const state = useGameStore.getState();
+        if (state.status === GameStatus.MODE_SELECT) {
+          setGameMode(GameMode.TWO_PLAYER);
+        }
       }
     };
     const handleKeyUp = (e) => {
@@ -176,7 +156,7 @@ function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [playerMovement, player2Movement]);
+  }, [playerMovement, player2Movement, pauseGame, resumeGame, startGame, resetGame, setGameMode]);
 
   // Get current input direction from S/D/F/E keys for Player 1
   const getInputDirection = useCallback(() => {
@@ -199,70 +179,71 @@ function App() {
   }, []);
 
   const handleUpdate = useCallback((deltaTime) => {
-    setGameState((state) => {
-      // Handle death animation
-      if (state.status === GameStatus.DYING) {
-        const newState = updateDeathAnimation(state, deltaTime);
-        // If respawned (status changed from DYING to RUNNING), sync player movement
-        if (newState.status === GameStatus.RUNNING && state.status === GameStatus.DYING) {
-          playerMovement.setPosition(newState.player.x, newState.player.y);
-          playerMovement.setDirection('right');
-          setPlayerDirection('right');
-        }
-        return newState;
+    const state = useGameStore.getState();
+
+    // Handle death animation
+    if (state.status === GameStatus.DYING) {
+      tick(deltaTime);
+      // Check if respawned (status changed from DYING to RUNNING)
+      const newState = useGameStore.getState();
+      if (newState.status === GameStatus.RUNNING) {
+        playerMovement.setPosition(newState.player.x, newState.player.y);
+        playerMovement.setDirection('right');
+        setPlayerDirection('right');
       }
+      return;
+    }
 
-      if (state.status !== GameStatus.RUNNING) {
-        return state;
-      }
+    if (state.status !== GameStatus.RUNNING) {
+      return;
+    }
 
-      // Get input direction
-      const inputDirection = getInputDirection();
+    // Get input direction
+    const inputDirection = getInputDirection();
 
-      // Update player movement using the grid-based movement hook
-      const playerState = playerMovement.update(state.maze, deltaTime, inputDirection);
+    // Update player movement using the grid-based movement hook
+    const playerState = playerMovement.update(state.maze, deltaTime, inputDirection);
 
-      // Update player direction for rendering
-      setPlayerDirection(playerState.direction);
+    // Update player direction for rendering
+    setPlayerDirection(playerState.direction);
 
-      // Convert string direction to Direction object for ghost AI
-      let directionObj = state.player.direction;
-      switch (playerState.direction) {
-        case 'up': directionObj = Direction.UP; break;
-        case 'down': directionObj = Direction.DOWN; break;
-        case 'left': directionObj = Direction.LEFT; break;
-        case 'right': directionObj = Direction.RIGHT; break;
+    // Convert string direction to Direction object for ghost AI
+    let directionObj = state.player.direction;
+    switch (playerState.direction) {
+      case 'up': directionObj = Direction.UP; break;
+      case 'down': directionObj = Direction.DOWN; break;
+      case 'left': directionObj = Direction.LEFT; break;
+      case 'right': directionObj = Direction.RIGHT; break;
+      default: break;
+    }
+
+    // Update player position in game state with direction for ghost AI
+    updatePlayerPosition(playerState.x, playerState.y, directionObj);
+
+    // Player 2 movement using grid-based movement (IJKL keys) - only in 2P mode
+    if (state.gameMode === GameMode.TWO_PLAYER) {
+      const player2Input = getPlayer2InputDirection();
+      const player2State = player2Movement.update(state.maze, deltaTime, player2Input);
+
+      // Update Player 2 direction for rendering
+      setPlayer2Direction(player2State.direction);
+
+      // Convert string direction to Direction object for Player 2
+      let direction2Obj = state.player2.direction;
+      switch (player2State.direction) {
+        case 'up': direction2Obj = Direction.UP; break;
+        case 'down': direction2Obj = Direction.DOWN; break;
+        case 'left': direction2Obj = Direction.LEFT; break;
+        case 'right': direction2Obj = Direction.RIGHT; break;
         default: break;
       }
 
-      // Update player position in game state with direction for ghost AI
-      state = updatePlayerPosition(state, playerState.x, playerState.y, directionObj);
+      // Update Player 2 position in game state
+      updatePlayer2Position(player2State.x, player2State.y, direction2Obj);
+    }
 
-      // Player 2 movement using grid-based movement (IJKL keys) - only in 2P mode
-      if (state.gameMode === GameMode.TWO_PLAYER) {
-        const player2Input = getPlayer2InputDirection();
-        const player2State = player2Movement.update(state.maze, deltaTime, player2Input);
-
-        // Update Player 2 direction for rendering
-        setPlayer2Direction(player2State.direction);
-
-        // Convert string direction to Direction object for Player 2
-        let direction2Obj = state.player2.direction;
-        switch (player2State.direction) {
-          case 'up': direction2Obj = Direction.UP; break;
-          case 'down': direction2Obj = Direction.DOWN; break;
-          case 'left': direction2Obj = Direction.LEFT; break;
-          case 'right': direction2Obj = Direction.RIGHT; break;
-          default: break;
-        }
-
-        // Update Player 2 position in game state
-        state = updatePlayer2Position(state, player2State.x, player2State.y, direction2Obj);
-      }
-
-      return updateGameState(state, deltaTime);
-    });
-  }, [getInputDirection, getPlayer2InputDirection, playerMovement, player2Movement]);
+    tick(deltaTime);
+  }, [getInputDirection, getPlayer2InputDirection, playerMovement, player2Movement, tick, updatePlayerPosition, updatePlayer2Position]);
 
   // Render game with neon glow effects
   useEffect(() => {
@@ -561,30 +542,6 @@ function App() {
   const isLoopRunning = gameState.status === GameStatus.RUNNING || gameState.status === GameStatus.DYING;
   useGameLoop(handleUpdate, isLoopRunning);
 
-  const handleModeSelect = (mode) => {
-    setGameState((state) => setGameMode(state, mode));
-  };
-
-  const handleStart = () => {
-    setGameState((state) => startGame(state));
-  };
-
-  const handleResume = () => {
-    setGameState((state) => resumeGame(state));
-  };
-
-  const handleReset = () => {
-    const newState = resetGame(gameState.highScore);
-    setGameState(newState);
-    // Reset player movement to initial position
-    playerMovement.setPosition(newState.player.x, newState.player.y);
-    playerMovement.setDirection('right');
-    setPlayerDirection('right');
-    // Reset Player 2 movement to initial position
-    player2Movement.setPosition(newState.player2.x, newState.player2.y);
-    player2Movement.setDirection('left');
-    setPlayer2Direction('left');
-  };
 
   const { width: canvasWidth, height: canvasHeight } = getMazePixelSize(gameState.maze);
 
@@ -592,8 +549,8 @@ function App() {
     <div className="game-container">
       <h1 className="game-title">PAC-MAN</h1>
 
-      {gameState.status !== GameStatus.IDLE && (
-        <ScoreDisplay gameState={gameState} />
+      {gameState.status !== GameStatus.IDLE && gameState.status !== GameStatus.MODE_SELECT && (
+        <ScoreDisplay />
       )}
 
       <div className="game-area">
@@ -606,35 +563,23 @@ function App() {
         />
 
         {gameState.status === GameStatus.MODE_SELECT && (
-          <ModeSelectScreen onSelectMode={handleModeSelect} />
+          <ModeSelectScreen />
         )}
 
         {gameState.status === GameStatus.IDLE && (
-          <StartScreen onStart={handleStart} gameMode={gameState.gameMode} />
+          <StartScreen />
         )}
 
         {gameState.status === GameStatus.PAUSED && (
-          <PauseOverlay
-            onResume={handleResume}
-            onQuit={handleReset}
-            score={gameState.score}
-          />
+          <PauseOverlay />
         )}
 
         {gameState.status === GameStatus.GAME_OVER && (
-          <GameOverScreen
-            score={gameState.score}
-            level={gameState.level}
-            onRestart={handleReset}
-          />
+          <GameOverScreen />
         )}
 
         {gameState.status === GameStatus.LEVEL_COMPLETE && (
-          <LevelCompleteScreen
-            score={gameState.score}
-            level={gameState.level}
-            onNextLevel={handleReset}
-          />
+          <LevelCompleteScreen />
         )}
       </div>
 

@@ -3,7 +3,13 @@
  * Displays pause message and options to resume or quit.
  */
 
-export default function PauseOverlay({ onResume, onQuit, score }) {
+import { useGameStore } from '../store';
+
+export default function PauseOverlay() {
+  const score = useGameStore((state) => state.score);
+  const resumeGame = useGameStore((state) => state.resumeGame);
+  const resetGame = useGameStore((state) => state.resetGame);
+
   return (
     <div className="menu-overlay pause-overlay">
       <h2 className="pause-title">PAUSED</h2>
@@ -13,10 +19,10 @@ export default function PauseOverlay({ onResume, onQuit, score }) {
       </div>
 
       <div className="pause-buttons">
-        <button className="menu-button resume-button" onClick={onResume}>
+        <button className="menu-button resume-button" onClick={resumeGame}>
           RESUME
         </button>
-        <button className="menu-button quit-button" onClick={onQuit}>
+        <button className="menu-button quit-button" onClick={resetGame}>
           QUIT
         </button>
       </div>
