@@ -95,18 +95,34 @@ Only `blocks` dependencies affect the ready work queue.
 
 ## Agent Workflow
 
+### Startup Protocol (MANDATORY)
+
+**CRITICAL**: Before starting ANY work, you MUST pull the latest main:
+
+```bash
+git pull origin main
+```
+
+**Why this matters**: Your task may depend on code that was just merged by another polecat. If you skip this step, you'll be working with stale code and your changes may conflict or fail.
+
+**Do this EVERY time you:**
+- Start a new task
+- Resume work after being idle
+- See mail telling you to pull main
+
 ### Standard Workflow
 
-1. **Check for ready work**: `bd ready --json`
-2. **Claim your task**: `bd update <id> --status in_progress --json`
-3. **Work on it**: Implement, test, document
-4. **Discover new work**: If you find bugs/TODOs:
+1. **Pull latest code**: `git pull origin main` (ALWAYS FIRST!)
+2. **Check for ready work**: `bd ready --json`
+3. **Claim your task**: `bd update <id> --status in_progress --json`
+4. **Work on it**: Implement, test, document
+5. **Discover new work**: If you find bugs/TODOs:
    ```bash
    bd create "Found bug in auth" -t bug -p 1 --json
    bd dep add <new-id> <current-id> --type discovered-from
    ```
-5. **Complete**: `bd close <id> --reason "Implemented" --json`
-6. **Sync**: `bd sync` (forces immediate flush)
+6. **Complete**: `bd close <id> --reason "Implemented" --json`
+7. **Sync**: `bd sync` (forces immediate flush)
 
 ### "Landing the Plane" Protocol
 
