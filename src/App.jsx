@@ -67,6 +67,7 @@ function App() {
     pauseGame,
     resumeGame,
     resetGame,
+    nextLevel,
     setGameMode,
     updatePlayerPosition,
     updatePlayer2Position,
@@ -120,7 +121,22 @@ function App() {
           startGame();
         } else if (state.status === GameStatus.PAUSED) {
           resumeGame();
-        } else if (state.status === GameStatus.GAME_OVER || state.status === GameStatus.LEVEL_COMPLETE || state.status === GameStatus.GAME_COMPLETE) {
+        } else if (state.status === GameStatus.LEVEL_COMPLETE) {
+          // Advance to next level (or GAME_COMPLETE if at MAX_LEVEL)
+          nextLevel();
+          const newState = useGameStore.getState();
+          // Only reset positions and start if not game complete
+          if (newState.status !== GameStatus.GAME_COMPLETE) {
+            playerMovement.setPosition(newState.player.x, newState.player.y);
+            playerMovement.setDirection('right');
+            setPlayerDirection('right');
+            player2Movement.setPosition(newState.player2.x, newState.player2.y);
+            player2Movement.setDirection('left');
+            setPlayer2Direction('left');
+            startGame();
+          }
+        } else if (state.status === GameStatus.GAME_OVER || state.status === GameStatus.GAME_COMPLETE) {
+          // Reset game to start fresh
           resetGame();
           const newState = useGameStore.getState();
           playerMovement.setPosition(newState.player.x, newState.player.y);
@@ -158,7 +174,7 @@ function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [playerMovement, player2Movement, pauseGame, resumeGame, startGame, resetGame, setGameMode]);
+  }, [playerMovement, player2Movement, pauseGame, resumeGame, startGame, resetGame, nextLevel, setGameMode]);
 
   // Get current input direction from S/D/F/E keys for Player 1
   const getInputDirection = useCallback(() => {
