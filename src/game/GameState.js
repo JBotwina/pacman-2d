@@ -23,6 +23,7 @@ export const GameStatus = {
 export const FRIGHTENED_DURATION = 8000; // 8 seconds of frightened mode
 export const FRIGHTENED_FLASH_TIME = 2000; // Flash for last 2 seconds
 export const FRIGHTENED_SPEED_MULTIPLIER = 0.5; // Ghosts move at half speed when frightened
+export const VULNERABILITY_DURATION = 10000; // Alias for compatibility
 
 export function createInitialState() {
   const maze = createDefaultMaze();
@@ -54,6 +55,9 @@ export function createInitialState() {
       frightenedFlashing: false,
       ghostsEatenDuringFrightened: 0, // For combo scoring
     },
+    // Legacy alias for compatibility
+    ghostsVulnerable: false,
+    vulnerabilityTimer: 0,
   };
 }
 
@@ -113,6 +117,22 @@ export function updateGameState(state, deltaTime) {
     ? GameStatus.LEVEL_COMPLETE
     : state.status;
 
+  // Handle ghost vulnerability
+  let ghostsVulnerable = state.ghostsVulnerable;
+  let vulnerabilityTimer = state.vulnerabilityTimer;
+
+  if (powerPelletCollected) {
+    // Start or reset vulnerability timer
+    ghostsVulnerable = true;
+    vulnerabilityTimer = VULNERABILITY_DURATION;
+  } else if (ghostsVulnerable) {
+    // Count down vulnerability timer
+    vulnerabilityTimer = Math.max(0, vulnerabilityTimer - deltaTime);
+    if (vulnerabilityTimer <= 0) {
+      ghostsVulnerable = false;
+    }
+  }
+
   return {
     ...state,
     elapsedTime: state.elapsedTime + deltaTime,
@@ -121,6 +141,8 @@ export function updateGameState(state, deltaTime) {
     score: newScore,
     status: newStatus,
     ghosts: newGhostState,
+    ghostsVulnerable,
+    vulnerabilityTimer,
   };
 }
 

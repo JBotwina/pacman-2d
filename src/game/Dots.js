@@ -7,6 +7,14 @@ export const TILE_SIZE = 20;
 export const DOT_POINTS = 10;
 export const POWER_PELLET_POINTS = 50;
 
+// Power pellet positions (tile coordinates) - 4 corners
+export const POWER_PELLET_POSITIONS = [
+  { x: 1, y: 1 },    // Top-left
+  { x: 18, y: 1 },   // Top-right
+  { x: 1, y: 13 },   // Bottom-left
+  { x: 18, y: 13 },  // Bottom-right
+];
+
 /**
  * Dot types - regular dots and power pellets.
  */
@@ -33,17 +41,6 @@ export function createDot(tileX, tileY, type = DotType.REGULAR) {
     collected: false,
   };
 }
-
-/**
- * Power pellet positions (tile coordinates).
- * These are placed near the corners of the maze.
- */
-const POWER_PELLET_POSITIONS = [
-  { x: 1, y: 1 },   // Top-left
-  { x: 18, y: 1 },  // Top-right
-  { x: 1, y: 13 },  // Bottom-left
-  { x: 18, y: 13 }, // Bottom-right
-];
 
 /**
  * Checks if a position should have a power pellet.

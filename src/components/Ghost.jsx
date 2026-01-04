@@ -9,19 +9,23 @@ const GHOST_COLORS = {
 
 const FRIGHTENED_COLOR = '#2121de'
 const FRIGHTENED_FLASH_COLOR = '#ffffff'
+const VULNERABLE_COLOR = '#2121de' // Alias for compatibility
 
-function Ghost({ name = 'blinky', size = 40, frightened = false, frightenedFlashing = false }) {
+function Ghost({ name = 'blinky', size = 40, frightened = false, frightenedFlashing = false, vulnerable = false }) {
   const normalColor = GHOST_COLORS[name.toLowerCase()] || GHOST_COLORS.blinky
 
+  // Support both frightened and vulnerable props
+  const isFrightened = frightened || vulnerable
   let color = normalColor
-  if (frightened) {
+  if (isFrightened) {
     color = frightenedFlashing ? FRIGHTENED_FLASH_COLOR : FRIGHTENED_COLOR
   }
 
   const className = [
     'ghost',
     `ghost-${name.toLowerCase()}`,
-    frightened && 'ghost-frightened',
+    isFrightened && 'ghost-frightened',
+    isFrightened && 'ghost-vulnerable',
     frightenedFlashing && 'ghost-flashing',
   ].filter(Boolean).join(' ')
 
@@ -42,7 +46,7 @@ function Ghost({ name = 'blinky', size = 40, frightened = false, frightenedFlash
           d="M16 0 C6 0 0 8 0 16 L0 32 L4 28 L8 32 L12 28 L16 32 L20 28 L24 32 L28 28 L32 32 L32 16 C32 8 26 0 16 0"
           fill={color}
         />
-        {frightened ? (
+        {isFrightened ? (
           <>
             {/* Frightened face - wavy mouth and simple eyes */}
             <ellipse cx="10" cy="14" rx="3" ry="3" fill="white" />

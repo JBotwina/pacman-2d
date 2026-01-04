@@ -227,6 +227,11 @@ function App() {
         <div>Lives: {gameState.lives}</div>
         <div>Level: {gameState.level}</div>
         <div>Dots: {dotsRemaining} / {gameState.dots.totalDots}</div>
+        {gameState.ghostsVulnerable && (
+          <div style={{ color: '#2121de' }}>
+            POWER: {Math.ceil(gameState.vulnerabilityTimer / 1000)}s
+          </div>
+        )}
         <div>FPS: {fps}</div>
       </div>
 
