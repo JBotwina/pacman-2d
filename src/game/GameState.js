@@ -87,6 +87,7 @@ export function createInitialState() {
     player2: {
       x: TILE_SIZE * 8.5,
       y: TILE_SIZE * 5.5,
+      direction: Direction.LEFT,
     },
     // Ghosts with AI behaviors
     ghosts: createAllGhosts(),
@@ -319,16 +320,21 @@ export function updatePlayerPosition(state, x, y, direction = null) {
 }
 
 /**
- * Updates player 2 position.
+ * Updates player 2 position and direction.
  * @param {object} state - Current game state
  * @param {number} x - New X position
  * @param {number} y - New Y position
+ * @param {object} direction - Movement direction (optional)
  * @returns {object} - Updated game state
  */
-export function updatePlayer2Position(state, x, y) {
+export function updatePlayer2Position(state, x, y, direction = null) {
   return {
     ...state,
-    player2: { x, y },
+    player2: {
+      x,
+      y,
+      direction: direction || state.player2.direction,
+    },
   };
 }
 

@@ -55,13 +55,17 @@ const GHOST_COLORS = {
 function App() {
   const [gameState, setGameState] = useState(createInitialState);
   const [playerDirection, setPlayerDirection] = useState('right');
+  const [player2Direction, setPlayer2Direction] = useState('left');
   const canvasRef = useRef(null);
   const keysRef = useRef({});
   const playerMovement = usePlayerMovement({ speed: PLAYER_SPEED });
+  const player2Movement = usePlayerMovement({ speed: PLAYER_SPEED });
 
-  // Initialize player position when game state is created
+  // Initialize player positions when game state is created
   useEffect(() => {
     playerMovement.setPosition(gameState.player.x, gameState.player.y);
+    player2Movement.setPosition(gameState.player2.x, gameState.player2.y);
+    player2Movement.setDirection('left');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount - intentionally ignore dependencies
 
@@ -97,6 +101,9 @@ function App() {
             playerMovement.setPosition(newState.player.x, newState.player.y);
             playerMovement.setDirection('right');
             setPlayerDirection('right');
+            player2Movement.setPosition(newState.player2.x, newState.player2.y);
+            player2Movement.setDirection('left');
+            setPlayer2Direction('left');
             return startGame(newState);
           }
           return state;
@@ -114,15 +121,25 @@ function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [playerMovement]);
+  }, [playerMovement, player2Movement]);
 
-  // Get current input direction from keys
+  // Get current input direction from keys for Player 1
   const getInputDirection = useCallback(() => {
     const keys = keysRef.current;
     if (keys['ArrowUp'] || keys['w'] || keys['W']) return 'up';
     if (keys['ArrowDown'] || keys['s'] || keys['S']) return 'down';
     if (keys['ArrowLeft'] || keys['a'] || keys['A']) return 'left';
     if (keys['ArrowRight'] || keys['d'] || keys['D']) return 'right';
+    return null;
+  }, []);
+
+  // Get current input direction from IJKL keys for Player 2
+  const getPlayer2InputDirection = useCallback(() => {
+    const keys = keysRef.current;
+    if (keys['i'] || keys['I']) return 'up';
+    if (keys['k'] || keys['K']) return 'down';
+    if (keys['j'] || keys['J']) return 'left';
+    if (keys['l'] || keys['L']) return 'right';
     return null;
   }, []);
 
@@ -154,44 +171,29 @@ function App() {
       // Update player position in game state with direction for ghost AI
       state = updatePlayerPosition(state, playerState.x, playerState.y, directionObj);
 
-      // Player 2 movement: I=up, J=left, K=down, L=right
-      const keys = keysRef.current;
-      let dx2 = 0;
-      let dy2 = 0;
+      // Player 2 movement using grid-based movement (IJKL keys)
+      const player2Input = getPlayer2InputDirection();
+      const player2State = player2Movement.update(state.maze, deltaTime, player2Input);
 
-      if (keys['i'] || keys['I']) dy2 -= 1;
-      if (keys['k'] || keys['K']) dy2 += 1;
-      if (keys['j'] || keys['J']) dx2 -= 1;
-      if (keys['l'] || keys['L']) dx2 += 1;
+      // Update Player 2 direction for rendering
+      setPlayer2Direction(player2State.direction);
 
-      // Apply movement for Player 2
-      if (dx2 !== 0 || dy2 !== 0) {
-        const speed = PLAYER_SPEED * deltaTime;
-        let newX2 = state.player2.x + dx2 * speed;
-        let newY2 = state.player2.y + dy2 * speed;
-
-        // Clamp to canvas bounds
-        newX2 = Math.max(TILE_SIZE, Math.min(CANVAS_WIDTH - TILE_SIZE, newX2));
-        newY2 = Math.max(TILE_SIZE, Math.min(CANVAS_HEIGHT - TILE_SIZE, newY2));
-
-        // Check wall collision
-        const tileX2 = Math.floor(newX2 / TILE_SIZE);
-        const tileY2 = Math.floor(newY2 / TILE_SIZE);
-
-        if (
-          tileY2 >= 0 &&
-          tileY2 < state.maze.length &&
-          tileX2 >= 0 &&
-          tileX2 < state.maze[0].length &&
-          state.maze[tileY2][tileX2] !== 1
-        ) {
-          state = updatePlayer2Position(state, newX2, newY2);
-        }
+      // Convert string direction to Direction object for Player 2
+      let direction2Obj = state.player2.direction;
+      switch (player2State.direction) {
+        case 'up': direction2Obj = Direction.UP; break;
+        case 'down': direction2Obj = Direction.DOWN; break;
+        case 'left': direction2Obj = Direction.LEFT; break;
+        case 'right': direction2Obj = Direction.RIGHT; break;
+        default: break;
       }
+
+      // Update Player 2 position in game state
+      state = updatePlayer2Position(state, player2State.x, player2State.y, direction2Obj);
 
       return updateGameState(state, deltaTime);
     });
-  }, [getInputDirection, playerMovement]);
+  }, [getInputDirection, getPlayer2InputDirection, playerMovement, player2Movement]);
 
   // Render game with neon glow effects
   useEffect(() => {
@@ -401,15 +403,42 @@ function App() {
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    // Draw Player 2 with cyan glow
+    // Draw Player 2 (Pac-Man) with cyan glow and mouth
     ctx.shadowColor = '#00ffff';
     ctx.shadowBlur = 15;
     ctx.fillStyle = '#00ffff';
+
+    // Calculate mouth angle based on Player 2 direction
+    let startAngle2, endAngle2;
+    switch (player2Direction) {
+      case 'right':
+        startAngle2 = mouthAngle;
+        endAngle2 = 2 * Math.PI - mouthAngle;
+        break;
+      case 'down':
+        startAngle2 = Math.PI / 2 + mouthAngle;
+        endAngle2 = Math.PI / 2 - mouthAngle + 2 * Math.PI;
+        break;
+      case 'left':
+        startAngle2 = Math.PI + mouthAngle;
+        endAngle2 = Math.PI - mouthAngle + 2 * Math.PI;
+        break;
+      case 'up':
+        startAngle2 = 3 * Math.PI / 2 + mouthAngle;
+        endAngle2 = 3 * Math.PI / 2 - mouthAngle + 2 * Math.PI;
+        break;
+      default:
+        startAngle2 = mouthAngle;
+        endAngle2 = 2 * Math.PI - mouthAngle;
+    }
+
     ctx.beginPath();
-    ctx.arc(gameState.player2.x, gameState.player2.y, TILE_SIZE / 2 - 2, 0, Math.PI * 2);
+    ctx.moveTo(gameState.player2.x, gameState.player2.y);
+    ctx.arc(gameState.player2.x, gameState.player2.y, TILE_SIZE / 2 - 2, startAngle2, endAngle2);
+    ctx.closePath();
     ctx.fill();
     ctx.shadowBlur = 0;
-  }, [gameState, playerDirection]);
+  }, [gameState, playerDirection, player2Direction]);
 
   const isLoopRunning = gameState.status === GameStatus.RUNNING;
   useGameLoop(handleUpdate, isLoopRunning);
@@ -429,6 +458,10 @@ function App() {
     playerMovement.setPosition(newState.player.x, newState.player.y);
     playerMovement.setDirection('right');
     setPlayerDirection('right');
+    // Reset Player 2 movement to initial position
+    player2Movement.setPosition(newState.player2.x, newState.player2.y);
+    player2Movement.setDirection('left');
+    setPlayer2Direction('left');
   };
 
   return (
