@@ -37,7 +37,7 @@ import './components/Menu.css';
 // Canvas dimensions based on actual maze size
 const CANVAS_WIDTH = MAZE_WIDTH * TILE_SIZE;
 const CANVAS_HEIGHT = MAZE_HEIGHT * TILE_SIZE;
-const PLAYER_SPEED = 6; // tiles per second for grid-based movement
+const PLAYER_SPEED = 4; // tiles per second for grid-based movement
 const PLAYER_SIZE = TILE_SIZE - 4; // Player hitbox size (slightly smaller than tile)
 
 // Neon colors for maze rendering
