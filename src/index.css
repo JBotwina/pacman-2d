@@ -7,6 +7,54 @@
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 
+  /* ===== NEON COLOR PALETTE ===== */
+
+  /* Base neon colors */
+  --neon-cyan: #00ffff;
+  --neon-magenta: #ff00ff;
+  --neon-yellow: #ffff00;
+  --neon-green: #39ff14;
+
+  /* Dimmed variants (for backgrounds/subtle use) */
+  --neon-cyan-dim: #00b3b3;
+  --neon-magenta-dim: #b300b3;
+  --neon-yellow-dim: #b3b300;
+  --neon-green-dim: #28b30e;
+
+  /* ===== GLOW EFFECTS (box-shadow) ===== */
+
+  /* Standard glow - medium intensity */
+  --glow-cyan: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan), 0 0 40px var(--neon-cyan);
+  --glow-magenta: 0 0 10px var(--neon-magenta), 0 0 20px var(--neon-magenta), 0 0 40px var(--neon-magenta);
+  --glow-yellow: 0 0 10px var(--neon-yellow), 0 0 20px var(--neon-yellow), 0 0 40px var(--neon-yellow);
+  --glow-green: 0 0 10px var(--neon-green), 0 0 20px var(--neon-green), 0 0 40px var(--neon-green);
+
+  /* Intense glow - for emphasis/hover states */
+  --glow-cyan-intense: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan), 0 0 40px var(--neon-cyan), 0 0 80px var(--neon-cyan);
+  --glow-magenta-intense: 0 0 10px var(--neon-magenta), 0 0 20px var(--neon-magenta), 0 0 40px var(--neon-magenta), 0 0 80px var(--neon-magenta);
+  --glow-yellow-intense: 0 0 10px var(--neon-yellow), 0 0 20px var(--neon-yellow), 0 0 40px var(--neon-yellow), 0 0 80px var(--neon-yellow);
+  --glow-green-intense: 0 0 10px var(--neon-green), 0 0 20px var(--neon-green), 0 0 40px var(--neon-green), 0 0 80px var(--neon-green);
+
+  /* Subtle glow - for ambient effects */
+  --glow-cyan-subtle: 0 0 5px var(--neon-cyan), 0 0 10px var(--neon-cyan);
+  --glow-magenta-subtle: 0 0 5px var(--neon-magenta), 0 0 10px var(--neon-magenta);
+  --glow-yellow-subtle: 0 0 5px var(--neon-yellow), 0 0 10px var(--neon-yellow);
+  --glow-green-subtle: 0 0 5px var(--neon-green), 0 0 10px var(--neon-green);
+
+  /* ===== TEXT GLOW EFFECTS (text-shadow) ===== */
+
+  /* Standard text glow */
+  --text-glow-cyan: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan), 0 0 40px var(--neon-cyan);
+  --text-glow-magenta: 0 0 10px var(--neon-magenta), 0 0 20px var(--neon-magenta), 0 0 40px var(--neon-magenta);
+  --text-glow-yellow: 0 0 10px var(--neon-yellow), 0 0 20px var(--neon-yellow), 0 0 40px var(--neon-yellow);
+  --text-glow-green: 0 0 10px var(--neon-green), 0 0 20px var(--neon-green), 0 0 40px var(--neon-green);
+
+  /* Intense text glow - for titles/emphasis */
+  --text-glow-cyan-intense: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan), 0 0 40px var(--neon-cyan), 0 0 80px var(--neon-cyan);
+  --text-glow-magenta-intense: 0 0 10px var(--neon-magenta), 0 0 20px var(--neon-magenta), 0 0 40px var(--neon-magenta), 0 0 80px var(--neon-magenta);
+  --text-glow-yellow-intense: 0 0 10px var(--neon-yellow), 0 0 20px var(--neon-yellow), 0 0 40px var(--neon-yellow), 0 0 80px var(--neon-yellow);
+  --text-glow-green-intense: 0 0 10px var(--neon-green), 0 0 20px var(--neon-green), 0 0 40px var(--neon-green), 0 0 80px var(--neon-green);
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
