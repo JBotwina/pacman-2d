@@ -4,6 +4,7 @@ import { usePlayerMovement } from './hooks/usePlayerMovement';
 import {
   createInitialState,
   updateGameState,
+  updateDeathAnimation,
   updatePlayerPosition,
   updatePlayer2Position,
   startGame,
@@ -17,6 +18,7 @@ import {
   Direction,
   GhostMode,
   GHOST_EAT_POINTS,
+  DEATH_ANIMATION_DURATION,
 } from './game/GameState';
 import { MAZE_WIDTH, MAZE_HEIGHT } from './data/maze';
 import { getUncollectedDots, DotType } from './game/Dots';
@@ -166,6 +168,18 @@ function App() {
 
   const handleUpdate = useCallback((deltaTime) => {
     setGameState((state) => {
+      // Handle death animation
+      if (state.status === GameStatus.DYING) {
+        const newState = updateDeathAnimation(state, deltaTime);
+        // If respawned (status changed from DYING to RUNNING), sync player movement
+        if (newState.status === GameStatus.RUNNING && state.status === GameStatus.DYING) {
+          playerMovement.setPosition(newState.player.x, newState.player.y);
+          playerMovement.setDirection('right');
+          setPlayerDirection('right');
+        }
+        return newState;
+      }
+
       if (state.status !== GameStatus.RUNNING) {
         return state;
       }
@@ -299,17 +313,18 @@ function App() {
       ctx.shadowBlur = 0;
     }
 
-    // Draw ghosts with neon glow
-    for (const ghostType of Object.keys(gameState.ghosts)) {
-      const ghost = gameState.ghosts[ghostType];
-      const gx = ghost.x;
-      const gy = ghost.y;
-      const size = TILE_SIZE / 2 - 2;
+    // Draw ghosts with neon glow (hide during death animation)
+    if (gameState.status !== GameStatus.DYING) {
+      for (const ghostType of Object.keys(gameState.ghosts)) {
+        const ghost = gameState.ghosts[ghostType];
+        const gx = ghost.x;
+        const gy = ghost.y;
+        const size = TILE_SIZE / 2 - 2;
 
-      // Skip ghosts in house
-      if (ghost.mode === GhostMode.IN_HOUSE) {
-        continue;
-      }
+        // Skip ghosts in house
+        if (ghost.mode === GhostMode.IN_HOUSE) {
+          continue;
+        }
 
       // Draw only eyes for eaten ghosts (returning to ghost house)
       if (ghost.mode === GhostMode.EATEN) {
@@ -385,75 +400,105 @@ function App() {
         ctx.arc(gx + size * 0.3, gy - size * 0.2, 2, 0, Math.PI * 2);
         ctx.fill();
       }
+      }
     }
 
 
     // Draw Player 1 (Pacman) with yellow glow and mouth
-    ctx.shadowColor = '#ffff00';
-    ctx.shadowBlur = 15;
-    ctx.fillStyle = '#ffff00';
+    // During death animation, show shrinking/deflating effect
+    if (gameState.status === GameStatus.DYING) {
+      // Calculate animation progress (0 = just died, 1 = animation complete)
+      const progress = 1 - (gameState.deathAnimationTimer / DEATH_ANIMATION_DURATION);
 
-    // Calculate mouth angle based on direction
-    const mouthAngle = 0.25 * Math.PI; // 45 degree mouth opening
-    let startAngle, endAngle;
+      // Death animation: Pac-Man opens mouth wide and shrinks
+      const deathMouthAngle = Math.PI * progress; // Mouth opens to 180 degrees
+      const deathRadius = (TILE_SIZE / 2 - 2) * (1 - progress * 0.8); // Shrink to 20% size
 
-    switch (playerDirection) {
-      case 'right':
-        startAngle = mouthAngle;
-        endAngle = 2 * Math.PI - mouthAngle;
-        break;
-      case 'down':
-        startAngle = Math.PI / 2 + mouthAngle;
-        endAngle = Math.PI / 2 - mouthAngle + 2 * Math.PI;
-        break;
-      case 'left':
-        startAngle = Math.PI + mouthAngle;
-        endAngle = Math.PI - mouthAngle + 2 * Math.PI;
-        break;
-      case 'up':
-        startAngle = 3 * Math.PI / 2 + mouthAngle;
-        endAngle = 3 * Math.PI / 2 - mouthAngle + 2 * Math.PI;
-        break;
-      default:
-        startAngle = mouthAngle;
-        endAngle = 2 * Math.PI - mouthAngle;
+      if (deathRadius > 1) {
+        ctx.shadowColor = '#ffff00';
+        ctx.shadowBlur = 15 * (1 - progress);
+        ctx.fillStyle = '#ffff00';
+        ctx.globalAlpha = 1 - progress * 0.5; // Fade slightly
+
+        ctx.beginPath();
+        ctx.moveTo(gameState.player.x, gameState.player.y);
+        // Death animation rotates upward as it shrinks
+        const deathStartAngle = -Math.PI / 2 + deathMouthAngle;
+        const deathEndAngle = -Math.PI / 2 - deathMouthAngle + 2 * Math.PI;
+        ctx.arc(gameState.player.x, gameState.player.y, deathRadius, deathStartAngle, deathEndAngle);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+      }
+    } else {
+      ctx.shadowColor = '#ffff00';
+      ctx.shadowBlur = 15;
+      ctx.fillStyle = '#ffff00';
+
+      // Calculate mouth angle based on direction
+      const mouthAngle = 0.25 * Math.PI; // 45 degree mouth opening
+      let startAngle, endAngle;
+
+      switch (playerDirection) {
+        case 'right':
+          startAngle = mouthAngle;
+          endAngle = 2 * Math.PI - mouthAngle;
+          break;
+        case 'down':
+          startAngle = Math.PI / 2 + mouthAngle;
+          endAngle = Math.PI / 2 - mouthAngle + 2 * Math.PI;
+          break;
+        case 'left':
+          startAngle = Math.PI + mouthAngle;
+          endAngle = Math.PI - mouthAngle + 2 * Math.PI;
+          break;
+        case 'up':
+          startAngle = 3 * Math.PI / 2 + mouthAngle;
+          endAngle = 3 * Math.PI / 2 - mouthAngle + 2 * Math.PI;
+          break;
+        default:
+          startAngle = mouthAngle;
+          endAngle = 2 * Math.PI - mouthAngle;
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(gameState.player.x, gameState.player.y);
+      ctx.arc(gameState.player.x, gameState.player.y, TILE_SIZE / 2 - 2, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
     }
 
-    ctx.beginPath();
-    ctx.moveTo(gameState.player.x, gameState.player.y);
-    ctx.arc(gameState.player.x, gameState.player.y, TILE_SIZE / 2 - 2, startAngle, endAngle);
-    ctx.closePath();
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // Draw Player 2 (Pac-Man) with cyan glow and mouth - only in 2P mode
-    if (gameState.gameMode === GameMode.TWO_PLAYER) {
+    // Draw Player 2 (Pac-Man) with cyan glow and mouth - only in 2P mode (hide during death animation)
+    if (gameState.gameMode === GameMode.TWO_PLAYER && gameState.status !== GameStatus.DYING) {
       ctx.shadowColor = '#00ffff';
       ctx.shadowBlur = 15;
       ctx.fillStyle = '#00ffff';
 
       // Calculate mouth angle based on Player 2 direction
+      const mouthAngle2 = 0.25 * Math.PI;
       let startAngle2, endAngle2;
       switch (player2Direction) {
         case 'right':
-          startAngle2 = mouthAngle;
-          endAngle2 = 2 * Math.PI - mouthAngle;
+          startAngle2 = mouthAngle2;
+          endAngle2 = 2 * Math.PI - mouthAngle2;
           break;
         case 'down':
-          startAngle2 = Math.PI / 2 + mouthAngle;
-          endAngle2 = Math.PI / 2 - mouthAngle + 2 * Math.PI;
+          startAngle2 = Math.PI / 2 + mouthAngle2;
+          endAngle2 = Math.PI / 2 - mouthAngle2 + 2 * Math.PI;
           break;
         case 'left':
-          startAngle2 = Math.PI + mouthAngle;
-          endAngle2 = Math.PI - mouthAngle + 2 * Math.PI;
+          startAngle2 = Math.PI + mouthAngle2;
+          endAngle2 = Math.PI - mouthAngle2 + 2 * Math.PI;
           break;
         case 'up':
-          startAngle2 = 3 * Math.PI / 2 + mouthAngle;
-          endAngle2 = 3 * Math.PI / 2 - mouthAngle + 2 * Math.PI;
+          startAngle2 = 3 * Math.PI / 2 + mouthAngle2;
+          endAngle2 = 3 * Math.PI / 2 - mouthAngle2 + 2 * Math.PI;
           break;
         default:
-          startAngle2 = mouthAngle;
-          endAngle2 = 2 * Math.PI - mouthAngle;
+          startAngle2 = mouthAngle2;
+          endAngle2 = 2 * Math.PI - mouthAngle2;
       }
 
       ctx.beginPath();
@@ -465,7 +510,7 @@ function App() {
     }
   }, [gameState, playerDirection, player2Direction]);
 
-  const isLoopRunning = gameState.status === GameStatus.RUNNING;
+  const isLoopRunning = gameState.status === GameStatus.RUNNING || gameState.status === GameStatus.DYING;
   useGameLoop(handleUpdate, isLoopRunning);
 
   const handleModeSelect = (mode) => {

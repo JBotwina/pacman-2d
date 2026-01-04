@@ -37,9 +37,13 @@ export const GameStatus = {
   IDLE: 'idle',
   RUNNING: 'running',
   PAUSED: 'paused',
+  DYING: 'dying',
   GAME_OVER: 'game_over',
   LEVEL_COMPLETE: 'level_complete',
 };
+
+// Death animation duration in milliseconds
+export const DEATH_ANIMATION_DURATION = 1500;
 
 export const GameMode = {
   SINGLE_PLAYER: '1P',
@@ -109,6 +113,59 @@ export function createInitialState() {
     ghostRespawnTimers: {},
     // Bonus fruit state
     fruit: createInitialFruitState(),
+    // Death animation state
+    deathAnimationTimer: 0,
+  };
+}
+
+/**
+ * Updates death animation state.
+ * Called when status is DYING to animate and then respawn or game over.
+ *
+ * @param {object} state - Current game state
+ * @param {number} deltaTime - Time since last frame in milliseconds
+ * @returns {object} - Updated game state
+ */
+export function updateDeathAnimation(state, deltaTime) {
+  if (state.status !== GameStatus.DYING) {
+    return state;
+  }
+
+  const newTimer = Math.max(0, state.deathAnimationTimer - deltaTime);
+
+  if (newTimer <= 0) {
+    // Death animation complete
+    if (state.lives <= 0) {
+      // Game over
+      return {
+        ...state,
+        status: GameStatus.GAME_OVER,
+        deathAnimationTimer: 0,
+      };
+    } else {
+      // Respawn player
+      return {
+        ...state,
+        status: GameStatus.RUNNING,
+        deathAnimationTimer: 0,
+        player: {
+          x: TILE_SIZE * 1.5,
+          y: TILE_SIZE * 1.5,
+          direction: Direction.RIGHT,
+        },
+        ghosts: resetGhosts(),
+        ghostsVulnerable: false,
+        vulnerabilityTimer: 0,
+        modeTimer: 0,
+        globalMode: GhostMode.SCATTER,
+        ghostRespawnTimers: {},
+      };
+    }
+  }
+
+  return {
+    ...state,
+    deathAnimationTimer: newTimer,
   };
 }
 
@@ -258,6 +315,7 @@ export function updateGameState(state, deltaTime) {
   let finalPlayer2Score = newPlayer2Score;
   let finalStatus = newStatus;
   let player = state.player;
+  let deathAnimationTimer = state.deathAnimationTimer;
 
   const collision = checkGhostCollision(updatedGhosts, state.player.x, state.player.y);
 
@@ -271,23 +329,10 @@ export function updateGameState(state, deltaTime) {
       // Start respawn timer for eaten ghost
       ghostRespawnTimers[collision.ghostType] = GHOST_RESPAWN_DELAY;
     } else {
-      // Ghost catches player - lose a life
+      // Ghost catches player - start death animation
       lives -= 1;
-      if (lives <= 0) {
-        finalStatus = GameStatus.GAME_OVER;
-      } else {
-        // Reset positions
-        player = {
-          x: TILE_SIZE * 1.5,
-          y: TILE_SIZE * 1.5,
-          direction: Direction.RIGHT,
-        };
-        updatedGhosts = resetGhosts();
-        ghostsVulnerable = false;
-        vulnerabilityTimer = 0;
-        modeTimer = 0;
-        globalMode = GhostMode.SCATTER;
-      }
+      finalStatus = GameStatus.DYING;
+      deathAnimationTimer = DEATH_ANIMATION_DURATION;
     }
   }
 
@@ -326,6 +371,7 @@ export function updateGameState(state, deltaTime) {
     ghostsEatenDuringFrightened,
     ghostRespawnTimers,
     fruit: newFruitState,
+    deathAnimationTimer,
   };
 }
 
