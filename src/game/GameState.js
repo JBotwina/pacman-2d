@@ -131,12 +131,14 @@ export function createInitialState(highScore = 0, difficulty = Difficulty.MEDIUM
     randomFruits: createInitialRandomFruitState(),
     // Death animation state
     deathAnimationTimer: 0,
+    dyingPlayer: null, // 1 for P1, 2 for P2, null when not dying
   };
 }
 
 /**
  * Updates death animation state.
  * Called when status is DYING to animate and then respawn or game over.
+ * Handles both Player 1 and Player 2 deaths in 2P mode.
  *
  * @param {object} state - Current game state
  * @param {number} deltaTime - Time since last frame in milliseconds
@@ -151,29 +153,64 @@ export function updateDeathAnimation(state, deltaTime) {
 
   if (newTimer <= 0) {
     // Death animation complete
-    if (state.lives <= 0) {
-      // Game over
-      return {
-        ...state,
-        status: GameStatus.GAME_OVER,
-        deathAnimationTimer: 0,
-      };
+    const dyingPlayer = state.dyingPlayer || 1; // Default to P1 for backwards compatibility
+
+    if (dyingPlayer === 2) {
+      // Player 2 death animation complete
+      // In 2P mode, game over only when BOTH players have no lives
+      if (state.lives <= 0 && state.player2Lives <= 0) {
+        return {
+          ...state,
+          status: GameStatus.GAME_OVER,
+          deathAnimationTimer: 0,
+          dyingPlayer: null,
+        };
+      } else {
+        // Respawn Player 2 at starting position
+        return {
+          ...state,
+          status: GameStatus.RUNNING,
+          deathAnimationTimer: 0,
+          dyingPlayer: null,
+          player2: {
+            x: TILE_SIZE * 8.5,
+            y: TILE_SIZE * 5.5,
+            direction: Direction.LEFT,
+          },
+          ghostsVulnerable: false,
+          vulnerabilityTimer: 0,
+        };
+      }
     } else {
-      // Respawn player at tile (2, 4) - avoids power pellet at (1,1)
-      // Ghosts keep their positions (no reset) for more challenge
-      return {
-        ...state,
-        status: GameStatus.RUNNING,
-        deathAnimationTimer: 0,
-        player: {
-          x: TILE_SIZE * 2.5,
-          y: TILE_SIZE * 4.5,
-          direction: Direction.RIGHT,
-        },
-        // Keep ghosts in their current positions - don't reset them
-        ghostsVulnerable: false,
-        vulnerabilityTimer: 0,
-      };
+      // Player 1 death animation complete
+      // In 2P mode, game over only when BOTH players have no lives
+      const isGameOver = state.gameMode === GameMode.TWO_PLAYER
+        ? (state.lives <= 0 && state.player2Lives <= 0)
+        : (state.lives <= 0);
+
+      if (isGameOver) {
+        return {
+          ...state,
+          status: GameStatus.GAME_OVER,
+          deathAnimationTimer: 0,
+          dyingPlayer: null,
+        };
+      } else {
+        // Respawn Player 1 at starting position
+        return {
+          ...state,
+          status: GameStatus.RUNNING,
+          deathAnimationTimer: 0,
+          dyingPlayer: null,
+          player: {
+            x: TILE_SIZE * 2.5,
+            y: TILE_SIZE * 4.5,
+            direction: Direction.RIGHT,
+          },
+          ghostsVulnerable: false,
+          vulnerabilityTimer: 0,
+        };
+      }
     }
   }
 
@@ -325,6 +362,7 @@ export function updateGameState(state, deltaTime) {
   let finalStatus = newStatus;
   let player = state.player;
   let deathAnimationTimer = state.deathAnimationTimer;
+  let dyingPlayer = state.dyingPlayer;
 
   // Check Player 1 collision with ghosts
   const collision = checkGhostCollision(updatedGhosts, state.player.x, state.player.y);
@@ -343,6 +381,7 @@ export function updateGameState(state, deltaTime) {
       lives -= 1;
       finalStatus = GameStatus.DYING;
       deathAnimationTimer = DEATH_ANIMATION_DURATION;
+      dyingPlayer = 1;
     }
   }
 
@@ -360,13 +399,11 @@ export function updateGameState(state, deltaTime) {
         // Start respawn timer for eaten ghost
         ghostRespawnTimers[collision2.ghostType] = GHOST_RESPAWN_DELAY;
       } else {
-        // Ghost catches player 2 - lose a life
+        // Ghost catches player 2 - start death animation
         player2Lives -= 1;
-        // In 2P mode, game continues if either player has lives
-        if (lives <= 0 && player2Lives <= 0) {
-          finalStatus = GameStatus.GAME_OVER;
-        }
-        // TODO: Could add player 2 death animation/respawn logic
+        finalStatus = GameStatus.DYING;
+        deathAnimationTimer = DEATH_ANIMATION_DURATION;
+        dyingPlayer = 2;
       }
     }
   }
@@ -433,6 +470,7 @@ export function updateGameState(state, deltaTime) {
     fruit: newFruitState,
     randomFruits: newRandomFruitState,
     deathAnimationTimer,
+    dyingPlayer,
   };
 }
 
