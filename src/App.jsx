@@ -616,7 +616,7 @@ function App() {
     }
 
 
-    // Draw Player 1 (Pacman) with yellow glow and mouth
+    // Draw Player 1 (Pacman) with yellow glow and animated chomping mouth
     // During death animation, show shrinking/deflating effect
     if (gameState.status === GameStatus.DYING) {
       // Calculate animation progress (0 = just died, 1 = animation complete)
@@ -648,8 +648,12 @@ function App() {
       ctx.shadowBlur = 15;
       ctx.fillStyle = '#ffff00';
 
-      // Calculate mouth angle based on direction
-      const mouthAngle = 0.25 * Math.PI; // 45 degree mouth opening
+      // Animated chomping mouth - oscillates between closed (0) and open (45 degrees)
+      // Uses sine wave for smooth interpolation, synced to movement speed
+      const chompFrequency = 8; // Chomps per second (classic Pac-Man feel)
+      const maxMouthAngle = 0.25 * Math.PI; // Maximum mouth opening (45 degrees)
+      const chompPhase = (gameState.elapsedTime / 1000) * chompFrequency * Math.PI;
+      const mouthAngle = maxMouthAngle * Math.abs(Math.sin(chompPhase));
       let startAngle, endAngle;
 
       switch (playerDirection) {
@@ -682,14 +686,18 @@ function App() {
       ctx.shadowBlur = 0;
     }
 
-    // Draw Player 2 (Pac-Man) with cyan glow and mouth - only in 2P mode (hide during death animation)
+    // Draw Player 2 (Pac-Man) with cyan glow and animated chomping mouth - only in 2P mode (hide during death animation)
     if (gameState.gameMode === GameMode.TWO_PLAYER && gameState.status !== GameStatus.DYING) {
       ctx.shadowColor = '#00ffff';
       ctx.shadowBlur = 15;
       ctx.fillStyle = '#00ffff';
 
-      // Calculate mouth angle based on Player 2 direction
-      const mouthAngle2 = 0.25 * Math.PI;
+      // Animated chomping mouth for Player 2 - same animation as Player 1
+      // Slight phase offset makes the two players visually distinct
+      const chompFrequency2 = 8; // Chomps per second
+      const maxMouthAngle2 = 0.25 * Math.PI; // Maximum mouth opening (45 degrees)
+      const chompPhase2 = (gameState.elapsedTime / 1000) * chompFrequency2 * Math.PI + Math.PI / 4; // Phase offset
+      const mouthAngle2 = maxMouthAngle2 * Math.abs(Math.sin(chompPhase2));
       let startAngle2, endAngle2;
       switch (player2Direction) {
         case 'right':
