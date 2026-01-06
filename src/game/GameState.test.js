@@ -82,8 +82,9 @@ describe('GameState', () => {
 
     it('creates player 2 at starting position', () => {
       const state = createInitialState();
-      expect(state.player2.x).toBe(TILE_SIZE * 8.5);
-      expect(state.player2.y).toBe(TILE_SIZE * 5.5);
+      // P2 spawns at bottom-left area (2.5, 10.5) - away from ghost house
+      expect(state.player2.x).toBe(TILE_SIZE * 2.5);
+      expect(state.player2.y).toBe(TILE_SIZE * 10.5);
       expect(state.player2.direction).toBe(Direction.LEFT);
     });
 
@@ -684,8 +685,9 @@ describe('GameState', () => {
         player2: { x: 100, y: 100, direction: Direction.DOWN },
       };
       const newState = nextLevel(state);
-      expect(newState.player2.x).toBe(TILE_SIZE * 8.5);
-      expect(newState.player2.y).toBe(TILE_SIZE * 5.5);
+      // P2 resets to safe spawn position (2.5, 10.5) - away from ghost house
+      expect(newState.player2.x).toBe(TILE_SIZE * 2.5);
+      expect(newState.player2.y).toBe(TILE_SIZE * 10.5);
       expect(newState.player2.direction).toBe(Direction.LEFT);
     });
 

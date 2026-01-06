@@ -128,8 +128,9 @@ describe('Zustand Game Store Migration Validation', () => {
 
     it('initializes player 2 with default position', () => {
       const state = getGameStoreState();
-      expect(state.player2.x).toBe(TILE_SIZE * 8.5);
-      expect(state.player2.y).toBe(TILE_SIZE * 5.5);
+      // P2 spawns at bottom-left area (2.5, 10.5) - away from ghost house
+      expect(state.player2.x).toBe(TILE_SIZE * 2.5);
+      expect(state.player2.y).toBe(TILE_SIZE * 10.5);
       expect(state.player2.direction).toBe(Direction.LEFT);
     });
 

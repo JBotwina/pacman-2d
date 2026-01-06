@@ -9,6 +9,7 @@ import {
   Direction,
   GhostMode,
   DEATH_ANIMATION_DURATION,
+  isPlayerInvincible,
 } from './game/GameState';
 import { getUncollectedDots, DotType } from './game/Dots';
 import { getFruitData, FRUIT_SPAWN_TILE } from './game/Fruit';
@@ -644,90 +645,102 @@ function App() {
         ctx.shadowBlur = 0;
       }
     } else {
-      ctx.shadowColor = '#ffff00';
-      ctx.shadowBlur = 15;
-      ctx.fillStyle = '#ffff00';
+      // Check if Player 1 should be visible (blinks when invincible)
+      const p1Invincible = isPlayerInvincible(gameState, 1);
+      const p1Visible = !p1Invincible || Math.floor(gameState.elapsedTime / 100) % 2 === 0;
 
-      // Animated chomping mouth - oscillates between closed (0) and open (45 degrees)
-      // Uses sine wave for smooth interpolation, synced to movement speed
-      const chompFrequency = 8; // Chomps per second (classic Pac-Man feel)
-      const maxMouthAngle = 0.25 * Math.PI; // Maximum mouth opening (45 degrees)
-      const chompPhase = (gameState.elapsedTime / 1000) * chompFrequency * Math.PI;
-      const mouthAngle = maxMouthAngle * Math.abs(Math.sin(chompPhase));
-      let startAngle, endAngle;
+      if (p1Visible) {
+        ctx.shadowColor = '#ffff00';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#ffff00';
 
-      switch (playerDirection) {
-        case 'right':
-          startAngle = mouthAngle;
-          endAngle = 2 * Math.PI - mouthAngle;
-          break;
-        case 'down':
-          startAngle = Math.PI / 2 + mouthAngle;
-          endAngle = Math.PI / 2 - mouthAngle + 2 * Math.PI;
-          break;
-        case 'left':
-          startAngle = Math.PI + mouthAngle;
-          endAngle = Math.PI - mouthAngle + 2 * Math.PI;
-          break;
-        case 'up':
-          startAngle = 3 * Math.PI / 2 + mouthAngle;
-          endAngle = 3 * Math.PI / 2 - mouthAngle + 2 * Math.PI;
-          break;
-        default:
-          startAngle = mouthAngle;
-          endAngle = 2 * Math.PI - mouthAngle;
+        // Animated chomping mouth - oscillates between closed (0) and open (45 degrees)
+        // Uses sine wave for smooth interpolation, synced to movement speed
+        const chompFrequency = 8; // Chomps per second (classic Pac-Man feel)
+        const maxMouthAngle = 0.25 * Math.PI; // Maximum mouth opening (45 degrees)
+        const chompPhase = (gameState.elapsedTime / 1000) * chompFrequency * Math.PI;
+        const mouthAngle = maxMouthAngle * Math.abs(Math.sin(chompPhase));
+        let startAngle, endAngle;
+
+        switch (playerDirection) {
+          case 'right':
+            startAngle = mouthAngle;
+            endAngle = 2 * Math.PI - mouthAngle;
+            break;
+          case 'down':
+            startAngle = Math.PI / 2 + mouthAngle;
+            endAngle = Math.PI / 2 - mouthAngle + 2 * Math.PI;
+            break;
+          case 'left':
+            startAngle = Math.PI + mouthAngle;
+            endAngle = Math.PI - mouthAngle + 2 * Math.PI;
+            break;
+          case 'up':
+            startAngle = 3 * Math.PI / 2 + mouthAngle;
+            endAngle = 3 * Math.PI / 2 - mouthAngle + 2 * Math.PI;
+            break;
+          default:
+            startAngle = mouthAngle;
+            endAngle = 2 * Math.PI - mouthAngle;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(gameState.player.x, gameState.player.y);
+        ctx.arc(gameState.player.x, gameState.player.y, TILE_SIZE / 2 - 2, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
       }
-
-      ctx.beginPath();
-      ctx.moveTo(gameState.player.x, gameState.player.y);
-      ctx.arc(gameState.player.x, gameState.player.y, TILE_SIZE / 2 - 2, startAngle, endAngle);
-      ctx.closePath();
-      ctx.fill();
-      ctx.shadowBlur = 0;
     }
 
     // Draw Player 2 (Pac-Man) with cyan glow and animated chomping mouth - only in 2P mode
     // Player 2 stays visible even during Player 1's death animation
     if (gameState.gameMode === GameMode.TWO_PLAYER) {
-      ctx.shadowColor = '#00ffff';
-      ctx.shadowBlur = 15;
-      ctx.fillStyle = '#00ffff';
+      // Check if Player 2 should be visible (blinks when invincible)
+      const p2Invincible = isPlayerInvincible(gameState, 2);
+      const p2Visible = !p2Invincible || Math.floor(gameState.elapsedTime / 100) % 2 === 0;
 
-      // Animated chomping mouth for Player 2 - same animation as Player 1
-      // Slight phase offset makes the two players visually distinct
-      const chompFrequency2 = 8; // Chomps per second
-      const maxMouthAngle2 = 0.25 * Math.PI; // Maximum mouth opening (45 degrees)
-      const chompPhase2 = (gameState.elapsedTime / 1000) * chompFrequency2 * Math.PI + Math.PI / 4; // Phase offset
-      const mouthAngle2 = maxMouthAngle2 * Math.abs(Math.sin(chompPhase2));
-      let startAngle2, endAngle2;
-      switch (player2Direction) {
-        case 'right':
-          startAngle2 = mouthAngle2;
-          endAngle2 = 2 * Math.PI - mouthAngle2;
-          break;
-        case 'down':
-          startAngle2 = Math.PI / 2 + mouthAngle2;
-          endAngle2 = Math.PI / 2 - mouthAngle2 + 2 * Math.PI;
-          break;
-        case 'left':
-          startAngle2 = Math.PI + mouthAngle2;
-          endAngle2 = Math.PI - mouthAngle2 + 2 * Math.PI;
-          break;
-        case 'up':
-          startAngle2 = 3 * Math.PI / 2 + mouthAngle2;
-          endAngle2 = 3 * Math.PI / 2 - mouthAngle2 + 2 * Math.PI;
-          break;
-        default:
-          startAngle2 = mouthAngle2;
-          endAngle2 = 2 * Math.PI - mouthAngle2;
+      if (p2Visible) {
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#00ffff';
+
+        // Animated chomping mouth for Player 2 - same animation as Player 1
+        // Slight phase offset makes the two players visually distinct
+        const chompFrequency2 = 8; // Chomps per second
+        const maxMouthAngle2 = 0.25 * Math.PI; // Maximum mouth opening (45 degrees)
+        const chompPhase2 = (gameState.elapsedTime / 1000) * chompFrequency2 * Math.PI + Math.PI / 4; // Phase offset
+        const mouthAngle2 = maxMouthAngle2 * Math.abs(Math.sin(chompPhase2));
+        let startAngle2, endAngle2;
+        switch (player2Direction) {
+          case 'right':
+            startAngle2 = mouthAngle2;
+            endAngle2 = 2 * Math.PI - mouthAngle2;
+            break;
+          case 'down':
+            startAngle2 = Math.PI / 2 + mouthAngle2;
+            endAngle2 = Math.PI / 2 - mouthAngle2 + 2 * Math.PI;
+            break;
+          case 'left':
+            startAngle2 = Math.PI + mouthAngle2;
+            endAngle2 = Math.PI - mouthAngle2 + 2 * Math.PI;
+            break;
+          case 'up':
+            startAngle2 = 3 * Math.PI / 2 + mouthAngle2;
+            endAngle2 = 3 * Math.PI / 2 - mouthAngle2 + 2 * Math.PI;
+            break;
+          default:
+            startAngle2 = mouthAngle2;
+            endAngle2 = 2 * Math.PI - mouthAngle2;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(gameState.player2.x, gameState.player2.y);
+        ctx.arc(gameState.player2.x, gameState.player2.y, TILE_SIZE / 2 - 2, startAngle2, endAngle2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
       }
-
-      ctx.beginPath();
-      ctx.moveTo(gameState.player2.x, gameState.player2.y);
-      ctx.arc(gameState.player2.x, gameState.player2.y, TILE_SIZE / 2 - 2, startAngle2, endAngle2);
-      ctx.closePath();
-      ctx.fill();
-      ctx.shadowBlur = 0;
     }
   }, [gameState, playerDirection, player2Direction]);
 

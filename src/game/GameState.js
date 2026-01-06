@@ -39,6 +39,14 @@ import {
   getDifficultySettings,
   getModeTimings,
 } from './DifficultyConfig.js';
+import {
+  canPlayerDie,
+  isPlayerInvincible,
+  respawnPlayer,
+  updateInvincibility,
+  PLAYER_SPAWN_POSITIONS,
+  INVINCIBILITY_DURATION,
+} from './DeathHandler.js';
 
 export const GameStatus = {
   MODE_SELECT: 'mode_select',
@@ -104,16 +112,21 @@ export function createInitialState(highScore = 0, difficulty = Difficulty.MEDIUM
     dots: dotsState,
     // Player 1 starts at tile (2, 4) - avoids power pellet at (1,1)
     player: {
-      x: TILE_SIZE * 2.5,
-      y: TILE_SIZE * 4.5,
-      direction: Direction.RIGHT,
+      x: PLAYER_SPAWN_POSITIONS[1].x,
+      y: PLAYER_SPAWN_POSITIONS[1].y,
+      direction: PLAYER_SPAWN_POSITIONS[1].direction,
     },
-    // Player 2 starts at bottom-right area
+    // Player 2 starts at bottom-left area (away from ghost house)
     player2: {
-      x: TILE_SIZE * 8.5,
-      y: TILE_SIZE * 5.5,
-      direction: Direction.LEFT,
+      x: PLAYER_SPAWN_POSITIONS[2].x,
+      y: PLAYER_SPAWN_POSITIONS[2].y,
+      direction: PLAYER_SPAWN_POSITIONS[2].direction,
     },
+    // Invincibility state for respawn protection
+    player1Invincible: false,
+    player1InvincibilityTimer: 0,
+    player2Invincible: false,
+    player2InvincibilityTimer: 0,
     // Ghosts with AI behaviors
     ghosts: createAllGhosts(difficulty),
     // Ghost mode management (scatter/chase switching)
@@ -166,19 +179,13 @@ export function updateDeathAnimation(state, deltaTime) {
           dyingPlayer: null,
         };
       } else {
-        // Respawn Player 2 at starting position
+        // Respawn Player 2 with invincibility
+        const respawnedState = respawnPlayer(state, 2);
         return {
-          ...state,
+          ...respawnedState,
           status: GameStatus.RUNNING,
           deathAnimationTimer: 0,
           dyingPlayer: null,
-          player2: {
-            x: TILE_SIZE * 8.5,
-            y: TILE_SIZE * 5.5,
-            direction: Direction.LEFT,
-          },
-          ghostsVulnerable: false,
-          vulnerabilityTimer: 0,
         };
       }
     } else {
@@ -196,19 +203,13 @@ export function updateDeathAnimation(state, deltaTime) {
           dyingPlayer: null,
         };
       } else {
-        // Respawn Player 1 at starting position
+        // Respawn Player 1 with invincibility
+        const respawnedState = respawnPlayer(state, 1);
         return {
-          ...state,
+          ...respawnedState,
           status: GameStatus.RUNNING,
           deathAnimationTimer: 0,
           dyingPlayer: null,
-          player: {
-            x: TILE_SIZE * 2.5,
-            y: TILE_SIZE * 4.5,
-            direction: Direction.RIGHT,
-          },
-          ghostsVulnerable: false,
-          vulnerabilityTimer: 0,
         };
       }
     }
@@ -232,6 +233,9 @@ export function updateGameState(state, deltaTime) {
   if (state.status !== GameStatus.RUNNING) {
     return state;
   }
+
+  // Update invincibility timers first
+  let currentState = updateInvincibility(state, deltaTime);
 
   // Check for dot collection at player 1 position
   const { newDotsState: p1DotsState, totalPoints: p1Points, powerPelletCollected: p1PowerPellet } = collectDotsAtPosition(
@@ -355,17 +359,17 @@ export function updateGameState(state, deltaTime) {
   );
 
   // Check player-ghost collision
-  let lives = state.lives;
-  let player2Lives = state.player2Lives;
+  let lives = currentState.lives;
+  let player2Lives = currentState.player2Lives;
   let finalScore = newScore;
   let finalPlayer2Score = newPlayer2Score;
   let finalStatus = newStatus;
-  let player = state.player;
-  let deathAnimationTimer = state.deathAnimationTimer;
-  let dyingPlayer = state.dyingPlayer;
+  let player = currentState.player;
+  let deathAnimationTimer = currentState.deathAnimationTimer;
+  let dyingPlayer = currentState.dyingPlayer;
 
-  // Check Player 1 collision with ghosts
-  const collision = checkGhostCollision(updatedGhosts, state.player.x, state.player.y);
+  // Check Player 1 collision with ghosts (only if not invincible)
+  const collision = checkGhostCollision(updatedGhosts, currentState.player.x, currentState.player.y);
 
   if (collision.collision) {
     if (collision.canEat) {
@@ -376,8 +380,8 @@ export function updateGameState(state, deltaTime) {
       ghostsEatenDuringFrightened += 1;
       // Start respawn timer for eaten ghost
       ghostRespawnTimers[collision.ghostType] = GHOST_RESPAWN_DELAY;
-    } else {
-      // Ghost catches player 1 - start death animation
+    } else if (canPlayerDie(currentState, 1)) {
+      // Ghost catches player 1 - start death animation (only if not invincible)
       lives -= 1;
       finalStatus = GameStatus.DYING;
       deathAnimationTimer = DEATH_ANIMATION_DURATION;
@@ -387,8 +391,8 @@ export function updateGameState(state, deltaTime) {
 
   // Check Player 2 collision with ghosts (in 2P mode)
   // Always check P2 collision independently of P1's state
-  if (state.gameMode === GameMode.TWO_PLAYER) {
-    const collision2 = checkGhostCollision(updatedGhosts, state.player2.x, state.player2.y);
+  if (currentState.gameMode === GameMode.TWO_PLAYER) {
+    const collision2 = checkGhostCollision(updatedGhosts, currentState.player2.x, currentState.player2.y);
 
     if (collision2.collision) {
       if (collision2.canEat) {
@@ -399,8 +403,8 @@ export function updateGameState(state, deltaTime) {
         ghostsEatenDuringFrightened += 1;
         // Start respawn timer for eaten ghost
         ghostRespawnTimers[collision2.ghostType] = GHOST_RESPAWN_DELAY;
-      } else {
-        // Ghost catches player 2 - decrement lives
+      } else if (canPlayerDie(currentState, 2)) {
+        // Ghost catches player 2 - decrement lives (only if not invincible)
         player2Lives -= 1;
         // Only start death animation if not already dying (P1 takes priority)
         if (finalStatus !== GameStatus.DYING) {
@@ -453,9 +457,9 @@ export function updateGameState(state, deltaTime) {
   const newHighScore = Math.max(state.highScore, finalScoreWithFruit, finalPlayer2ScoreWithFruit);
 
   return {
-    ...state,
-    elapsedTime: state.elapsedTime + deltaTime,
-    frameCount: state.frameCount + 1,
+    ...currentState,
+    elapsedTime: currentState.elapsedTime + deltaTime,
+    frameCount: currentState.frameCount + 1,
     dots: newDotsState,
     score: finalScoreWithFruit,
     highScore: newHighScore,
@@ -620,15 +624,20 @@ export function nextLevel(state) {
     dots: dotsState,
     // Reset player positions
     player: {
-      x: TILE_SIZE * 2.5,
-      y: TILE_SIZE * 4.5,
-      direction: Direction.RIGHT,
+      x: PLAYER_SPAWN_POSITIONS[1].x,
+      y: PLAYER_SPAWN_POSITIONS[1].y,
+      direction: PLAYER_SPAWN_POSITIONS[1].direction,
     },
     player2: {
-      x: TILE_SIZE * 8.5,
-      y: TILE_SIZE * 5.5,
-      direction: Direction.LEFT,
+      x: PLAYER_SPAWN_POSITIONS[2].x,
+      y: PLAYER_SPAWN_POSITIONS[2].y,
+      direction: PLAYER_SPAWN_POSITIONS[2].direction,
     },
+    // Reset invincibility
+    player1Invincible: false,
+    player1InvincibilityTimer: 0,
+    player2Invincible: false,
+    player2InvincibilityTimer: 0,
     // Reset ghosts with current difficulty
     ghosts: createAllGhosts(state.difficulty),
     globalMode: GhostMode.SCATTER,
@@ -691,5 +700,5 @@ export function eatGhost(state) {
   };
 }
 
-// Re-export TILE_SIZE, Direction, GhostMode, and Difficulty for components
-export { TILE_SIZE, Direction, GhostMode, Difficulty };
+// Re-export TILE_SIZE, Direction, GhostMode, Difficulty, and DeathHandler functions for components
+export { TILE_SIZE, Direction, GhostMode, Difficulty, isPlayerInvincible, INVINCIBILITY_DURATION };
