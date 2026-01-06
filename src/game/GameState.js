@@ -374,17 +374,25 @@ export function updateGameState(state, deltaTime) {
   // Handle bonus fruit
   let newFruitState = updateFruitTimer(state.fruit, deltaTime);
   let fruitPoints = 0;
+  let fruitPointsP2 = 0;
 
   // Check if fruit should spawn based on dots collected
   if (!newFruitState.active && shouldSpawnFruit(newDotsState.collectedDots, newFruitState.spawnCount)) {
     newFruitState = spawnFruit(newFruitState, state.level);
   }
 
-  // Check for fruit collection
+  // Check for fruit collection - Player 1
   if (newFruitState.active && checkFruitCollision(player.x, player.y, newFruitState)) {
     const { newFruitState: collectedState, points } = collectFruit(newFruitState);
     newFruitState = collectedState;
     fruitPoints = points;
+  }
+
+  // Check for fruit collection - Player 2 (in 2P mode)
+  if (state.gameMode === GameMode.TWO_PLAYER && newFruitState.active && checkFruitCollision(state.player2.x, state.player2.y, newFruitState)) {
+    const { newFruitState: collectedState, points } = collectFruit(newFruitState);
+    newFruitState = collectedState;
+    fruitPointsP2 = points;
   }
 
   // Handle random fruit spawning and collection
@@ -400,7 +408,8 @@ export function updateGameState(state, deltaTime) {
   );
 
   const finalScoreWithFruit = finalScore + fruitPoints + randomFruitPoints;
-  const newHighScore = Math.max(state.highScore, finalScoreWithFruit, finalPlayer2Score);
+  const finalPlayer2ScoreWithFruit = finalPlayer2Score + fruitPointsP2;
+  const newHighScore = Math.max(state.highScore, finalScoreWithFruit, finalPlayer2ScoreWithFruit);
 
   return {
     ...state,
@@ -409,7 +418,7 @@ export function updateGameState(state, deltaTime) {
     dots: newDotsState,
     score: finalScoreWithFruit,
     highScore: newHighScore,
-    player2Score: finalPlayer2Score,
+    player2Score: finalPlayer2ScoreWithFruit,
     status: finalStatus,
     lives,
     player2Lives,
