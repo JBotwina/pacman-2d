@@ -235,6 +235,39 @@ git pull
 bd import -i .beads/issues.jsonl
 ```
 
+## Linear Integration
+
+When working on issues that have corresponding Linear issues (JAM-xxx), **keep both systems in sync**:
+
+### Starting Work
+When you claim a bead, also update Linear:
+```bash
+bd update <id> --status in_progress
+```
+Then update Linear via MCP:
+```
+mcp__linear-server__update_issue
+  id: JAM-xxx
+  state: In Progress
+```
+
+### Completing Work
+When you close a bead, also close Linear:
+```bash
+bd close <id> --reason "Implemented"
+```
+Then update Linear via MCP:
+```
+mcp__linear-server__update_issue
+  id: JAM-xxx
+  state: Done
+```
+
+### Why This Matters
+- Linear is visible to the human team for project tracking
+- Beads are the source of truth for agent workflows
+- Both must stay synchronized for accurate progress visibility
+
 ## Pro Tips for Agents
 
 - Always use `--json` flags for programmatic use
@@ -244,3 +277,4 @@ bd import -i .beads/issues.jsonl
 - Use `bd dep tree` to understand complex dependencies
 - Priority 0-1 issues are more important than 2-4
 - Include issue ID in commit messages: `(bd-xyz)`
+- **Sync Linear status** when updating bead status (in_progress, done)
