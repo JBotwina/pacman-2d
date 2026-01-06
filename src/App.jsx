@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useGameLoop } from './hooks/useGameLoop';
 import { usePlayerMovement } from './hooks/usePlayerMovement';
+import { useSoundManager } from './hooks/useSoundManager';
 import { useGameStore, GameStatus, GameMode } from './store';
 import {
   TILE_SIZE,
@@ -81,6 +82,21 @@ function App() {
   const playerMovement = usePlayerMovement({ speed: PLAYER_SPEED });
   const player2Movement = usePlayerMovement({ speed: PLAYER_SPEED });
 
+  // Sound manager for game audio
+  const sounds = useSoundManager();
+
+  // Track previous state for sound triggering
+  const prevStateRef = useRef({
+    status: null,
+    dotsCollected: 0,
+    score: 0,
+    player2Score: 0,
+    ghostsVulnerable: false,
+    lives: 3,
+    player2Lives: 3,
+    fruitActive: false,
+  });
+
   // Initialize player positions when game state is created
   useEffect(() => {
     playerMovement.setPosition(gameState.player.x, gameState.player.y);
@@ -96,9 +112,103 @@ function App() {
     }
   }, [gameState.highScore]);
 
+  // Sound effects based on game state changes
+  useEffect(() => {
+    const prev = prevStateRef.current;
+
+    // Game status transitions
+    if (prev.status !== gameState.status) {
+      switch (gameState.status) {
+        case GameStatus.RUNNING:
+          if (prev.status === GameStatus.IDLE || prev.status === GameStatus.MODE_SELECT) {
+            sounds.playGameStart();
+          }
+          // Stop frightened sound when game resumes after status change
+          if (prev.status === GameStatus.LEVEL_COMPLETE) {
+            sounds.stopFrightenedSound();
+          }
+          break;
+        case GameStatus.DYING:
+          sounds.stopFrightenedSound();
+          sounds.playDeath();
+          break;
+        case GameStatus.LEVEL_COMPLETE:
+          sounds.stopFrightenedSound();
+          sounds.playLevelComplete();
+          break;
+        case GameStatus.GAME_OVER:
+          sounds.stopFrightenedSound();
+          sounds.playGameOver();
+          break;
+        case GameStatus.GAME_COMPLETE:
+          sounds.stopFrightenedSound();
+          sounds.playLevelComplete(); // Victory sound for completing all levels
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Dot collection (waka-waka sound)
+    const currentDotsCollected = gameState.dots?.collectedDots ?? 0;
+    if (currentDotsCollected > prev.dotsCollected && gameState.status === GameStatus.RUNNING) {
+      sounds.playDotEat();
+    }
+
+    // Power pellet (when ghosts become vulnerable)
+    if (gameState.ghostsVulnerable && !prev.ghostsVulnerable) {
+      sounds.playPowerPellet();
+      sounds.playFrightenedStart();
+    }
+    // Stop frightened sound when vulnerability ends
+    if (!gameState.ghostsVulnerable && prev.ghostsVulnerable) {
+      sounds.stopFrightenedSound();
+    }
+
+    // Ghost eating - detect score jumps of 200, 400, 800, 1600 (ghost points)
+    // Check both players' scores
+    const scoreDiff = gameState.score - prev.score;
+    const player2ScoreDiff = gameState.player2Score - prev.player2Score;
+    const ghostPoints = [200, 400, 800, 1600];
+    if (ghostPoints.includes(scoreDiff) || ghostPoints.includes(player2ScoreDiff)) {
+      sounds.playGhostEat();
+    }
+
+    // Fruit collection - detect fruit going from active to inactive with score increase
+    if (prev.fruitActive && !gameState.fruit?.active && (scoreDiff > 0 || player2ScoreDiff > 0)) {
+      // Check if the score increase matches fruit points (100-5000 range, not ghost points)
+      const fruitPointValues = [100, 300, 500, 700, 1000, 2000, 3000, 5000];
+      if (fruitPointValues.includes(scoreDiff) || fruitPointValues.includes(player2ScoreDiff)) {
+        sounds.playFruitEat();
+      }
+    }
+
+    // Extra life detection (if score crosses 10000 threshold)
+    const prevThreshold = Math.floor(prev.score / 10000);
+    const currentThreshold = Math.floor(gameState.score / 10000);
+    if (currentThreshold > prevThreshold && gameState.status === GameStatus.RUNNING) {
+      sounds.playExtraLife();
+    }
+
+    // Update previous state
+    prevStateRef.current = {
+      status: gameState.status,
+      dotsCollected: currentDotsCollected,
+      score: gameState.score,
+      player2Score: gameState.player2Score,
+      ghostsVulnerable: gameState.ghostsVulnerable,
+      lives: gameState.lives,
+      player2Lives: gameState.player2Lives,
+      fruitActive: gameState.fruit?.active ?? false,
+    };
+  }, [gameState, sounds]);
+
   // Handle keyboard input
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Initialize audio context on first user interaction (browser autoplay policy)
+      sounds.initAudio();
+
       keysRef.current[e.key] = true;
       // Prevent default for arrow keys to avoid page scrolling
       if (e.key.startsWith('Arrow')) {
@@ -174,7 +284,7 @@ function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [playerMovement, player2Movement, pauseGame, resumeGame, startGame, resetGame, nextLevel, setGameMode]);
+  }, [playerMovement, player2Movement, pauseGame, resumeGame, startGame, resetGame, nextLevel, setGameMode, sounds]);
 
   // Get current input direction from S/D/F/E keys for Player 1
   const getInputDirection = useCallback(() => {
