@@ -8,9 +8,22 @@ import { render, screen, userEvent, resetGameStore, setGameStoreState, act } fro
 import GameOverScreen from './GameOverScreen.jsx';
 import { GameStatus } from '../store/gameStore.js';
 
+// Helper to fill leaderboard so new scores don't qualify for high score entry
+function fillLeaderboardWithHighScores() {
+  const entries = Array.from({ length: 10 }, (_, i) => ({
+    initials: `TS${i}`,
+    score: 1000000 - i * 1000, // Very high scores
+    level: 5,
+    date: new Date().toISOString(),
+  }));
+  localStorage.setItem('pacman-leaderboard', JSON.stringify(entries));
+}
+
 describe('GameOverScreen', () => {
   beforeEach(() => {
     resetGameStore();
+    // Fill leaderboard so tests show the regular game over screen, not initials input
+    fillLeaderboardWithHighScores();
   });
 
   // ============================================
@@ -71,17 +84,17 @@ describe('GameOverScreen', () => {
 
     it('displays the current score from store', () => {
       render(<GameOverScreen />, { initialState: { score: 12500 } });
-      expect(screen.getByText('12500')).toBeInTheDocument();
+      expect(screen.getByText('12,500')).toBeInTheDocument();
     });
 
     it('displays large scores correctly', () => {
       render(<GameOverScreen />, { initialState: { score: 999999 } });
-      expect(screen.getByText('999999')).toBeInTheDocument();
+      expect(screen.getByText('999,999')).toBeInTheDocument();
     });
 
     it('score value has correct CSS class', () => {
       render(<GameOverScreen />, { initialState: { score: 5000 } });
-      const scoreValue = screen.getByText('5000');
+      const scoreValue = screen.getByText('5,000');
       expect(scoreValue).toHaveClass('stat-value', 'score-value');
     });
 
@@ -191,13 +204,13 @@ describe('GameOverScreen', () => {
   describe('State Integration', () => {
     it('updates displayed score when store changes', async () => {
       const { rerender } = render(<GameOverScreen />, { initialState: { score: 1000 } });
-      expect(screen.getByText('1000')).toBeInTheDocument();
+      expect(screen.getByText('1,000')).toBeInTheDocument();
 
       act(() => {
         setGameStoreState({ score: 2000 });
       });
       rerender(<GameOverScreen />);
-      expect(screen.getByText('2000')).toBeInTheDocument();
+      expect(screen.getByText('2,000')).toBeInTheDocument();
     });
 
     it('updates displayed level when store changes', async () => {
@@ -235,7 +248,7 @@ describe('GameOverScreen', () => {
         }
       });
 
-      expect(screen.getByText('150000')).toBeInTheDocument();
+      expect(screen.getByText('150,000')).toBeInTheDocument();
       const levelValue = screen.getByText('LEVEL REACHED').closest('.stat-row').querySelector('.stat-value');
       expect(levelValue).toHaveTextContent('15');
     });
@@ -298,7 +311,9 @@ describe('GameOverScreen', () => {
     it('score stat row comes before level stat row', () => {
       render(<GameOverScreen />, { initialState: { score: 1234, level: 5 } });
       const statRows = document.querySelectorAll('.stat-row');
-      expect(statRows[0]).toHaveTextContent('FINAL SCORE');
+      // First stat row contains score (either "FINAL SCORE" or just "SCORE")
+      expect(statRows[0]).toHaveTextContent(/SCORE/);
+      expect(statRows[0]).toHaveTextContent('1,234');
       expect(statRows[1]).toHaveTextContent('LEVEL REACHED');
     });
 

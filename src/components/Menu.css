@@ -450,3 +450,301 @@
   font-size: 0.75rem;
   animation: hintBlink 1.5s ease-in-out infinite;
 }
+
+/* Initials Input Component */
+.initials-input {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  outline: none;
+}
+
+.initials-title {
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  font-size: 1.2rem;
+  color: #ffd700;
+  text-shadow: 0 0 10px #ffd700, 0 0 20px #ffaa00;
+  margin: 0;
+  letter-spacing: 2px;
+  animation: titlePulse 1.5s ease-in-out infinite;
+}
+
+.initials-prompt {
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: #4a4aff;
+  margin: 0;
+  letter-spacing: 2px;
+}
+
+.initials-letters {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.initial-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.initial-slot.active {
+  background: rgba(74, 74, 255, 0.2);
+  box-shadow: 0 0 15px rgba(74, 74, 255, 0.5);
+}
+
+.initial-arrow {
+  background: none;
+  border: none;
+  color: #4a4aff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  transition: all 0.2s;
+  opacity: 0.6;
+}
+
+.initial-slot.active .initial-arrow {
+  opacity: 1;
+}
+
+.initial-arrow:hover {
+  color: #8a8aff;
+  transform: scale(1.2);
+}
+
+.initial-letter {
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  font-size: 2rem;
+  color: #fff;
+  text-shadow: 0 0 10px #4a4aff;
+  min-width: 2rem;
+  text-align: center;
+}
+
+.initial-slot.active .initial-letter {
+  color: #ffff00;
+  text-shadow: 0 0 15px #ffff00;
+  animation: letterPulse 0.5s ease-in-out infinite;
+}
+
+@keyframes letterPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.initials-controls {
+  margin-top: 0.5rem;
+}
+
+.submit-button {
+  border-color: #39ff14;
+  color: #39ff14;
+}
+
+.submit-button:hover {
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.6);
+  color: #6aff4a;
+}
+
+.initials-hint {
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: #555;
+  margin: 0;
+}
+
+/* Leaderboard Component */
+.leaderboard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(33, 33, 222, 0.1);
+  border: 2px solid #2121de;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  min-width: 280px;
+}
+
+.leaderboard-title {
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: #ffd700;
+  text-shadow: 0 0 8px #ffd700;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: 2px;
+}
+
+.leaderboard-empty {
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0.5rem 0;
+}
+
+.leaderboard-empty-hint {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #444;
+  margin: 0;
+}
+
+.leaderboard-header {
+  display: grid;
+  grid-template-columns: 2rem 3.5rem 5rem 2rem;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(74, 74, 255, 0.3);
+}
+
+.leaderboard-header span {
+  font-family: monospace;
+  font-size: 0.65rem;
+  color: #4a4aff;
+  letter-spacing: 1px;
+}
+
+.leaderboard-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.leaderboard-entry {
+  display: grid;
+  grid-template-columns: 2rem 3.5rem 5rem 2rem;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  transition: all 0.2s;
+}
+
+.leaderboard-entry.highlighted {
+  background: rgba(255, 215, 0, 0.15);
+  border-radius: 4px;
+  animation: highlightPulse 1s ease-in-out infinite;
+}
+
+@keyframes highlightPulse {
+  0%, 100% { background: rgba(255, 215, 0, 0.15); }
+  50% { background: rgba(255, 215, 0, 0.25); }
+}
+
+.leaderboard-entry.top-1 .lb-rank {
+  color: #ffd700;
+  text-shadow: 0 0 5px #ffd700;
+}
+
+.leaderboard-entry.top-2 .lb-rank {
+  color: #c0c0c0;
+  text-shadow: 0 0 5px #c0c0c0;
+}
+
+.leaderboard-entry.top-3 .lb-rank {
+  color: #cd7f32;
+  text-shadow: 0 0 5px #cd7f32;
+}
+
+.lb-rank {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: #888;
+  text-align: center;
+}
+
+.lb-initials {
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  font-size: 0.7rem;
+  color: #fff;
+  letter-spacing: 2px;
+}
+
+.lb-score {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #ffff00;
+  text-align: right;
+}
+
+.lb-level {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: #00ffff;
+  text-align: center;
+}
+
+.leaderboard-footer {
+  width: 100%;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(74, 74, 255, 0.3);
+}
+
+.lb-date {
+  font-family: monospace;
+  font-size: 0.65rem;
+  color: #444;
+}
+
+/* High Score Result Display */
+.high-score-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  animation: resultAppear 0.5s ease-out;
+}
+
+@keyframes resultAppear {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.result-title {
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  font-size: 1rem;
+  color: #ffd700;
+  text-shadow: 0 0 10px #ffd700, 0 0 20px #ffaa00;
+  margin: 0;
+  letter-spacing: 2px;
+}
+
+.result-rank {
+  font-family: monospace;
+  font-size: 1rem;
+  color: #fff;
+  margin: 0.5rem 0;
+}
+
+.rank-number {
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  font-size: 1.5rem;
+  color: #39ff14;
+  text-shadow: 0 0 15px #39ff14;
+}
+
+.result-score {
+  font-family: monospace;
+  font-size: 1.2rem;
+  color: #ffff00;
+  text-shadow: 0 0 8px #ffff00;
+  margin: 0;
+}
+
+/* Compact final stats for initials entry */
+.final-stats.compact {
+  padding: 0.75rem 1.5rem;
+  margin-bottom: 0.5rem;
+}
