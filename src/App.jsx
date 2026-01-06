@@ -686,8 +686,9 @@ function App() {
       ctx.shadowBlur = 0;
     }
 
-    // Draw Player 2 (Pac-Man) with cyan glow and animated chomping mouth - only in 2P mode (hide during death animation)
-    if (gameState.gameMode === GameMode.TWO_PLAYER && gameState.status !== GameStatus.DYING) {
+    // Draw Player 2 (Pac-Man) with cyan glow and animated chomping mouth - only in 2P mode
+    // Player 2 stays visible even during Player 1's death animation
+    if (gameState.gameMode === GameMode.TWO_PLAYER) {
       ctx.shadowColor = '#00ffff';
       ctx.shadowBlur = 15;
       ctx.fillStyle = '#00ffff';
