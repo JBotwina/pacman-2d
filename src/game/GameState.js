@@ -34,6 +34,11 @@ import {
   createInitialRandomFruitState,
   updateRandomFruits,
 } from './RandomFruit.js';
+import {
+  Difficulty,
+  getDifficultySettings,
+  getModeTimings,
+} from './DifficultyConfig.js';
 
 export const GameStatus = {
   MODE_SELECT: 'mode_select',
@@ -76,13 +81,14 @@ export const GHOST_RESPAWN_DELAY = 5000;
  */
 export const GHOST_EAT_POINTS = [200, 400, 800, 1600];
 
-export function createInitialState(highScore = 0) {
+export function createInitialState(highScore = 0, difficulty = Difficulty.MEDIUM) {
   const maze = createDefaultMaze();
   const dotsState = createDotsFromMaze(maze);
 
   return {
     status: GameStatus.MODE_SELECT,
     gameMode: null, // Will be set when player selects 1P or 2P
+    difficulty, // Difficulty setting (easy, medium, hard)
     // Player 1 stats
     score: 0,
     highScore,
@@ -109,7 +115,7 @@ export function createInitialState(highScore = 0) {
       direction: Direction.LEFT,
     },
     // Ghosts with AI behaviors
-    ghosts: createAllGhosts(),
+    ghosts: createAllGhosts(difficulty),
     // Ghost mode management (scatter/chase switching)
     globalMode: GhostMode.SCATTER,
     modeTimer: 0,
@@ -248,9 +254,11 @@ export function updateGameState(state, deltaTime) {
 
   // Handle scatter/chase mode switching (only when not frightened)
   if (!ghostsVulnerable) {
+    // Get mode timings based on difficulty
+    const difficultyModeTimings = getModeTimings(state.difficulty);
     const currentModeTime = globalMode === GhostMode.SCATTER
-      ? MODE_TIMINGS.scatter
-      : MODE_TIMINGS.chase;
+      ? difficultyModeTimings.scatter
+      : difficultyModeTimings.chase;
 
     if (modeTimer >= currentModeTime) {
       // Switch modes
@@ -505,16 +513,32 @@ export function resumeGame(state) {
 }
 
 /**
- * Resets the game to initial state, preserving high score.
+ * Resets the game to initial state, preserving high score and difficulty.
  * @param {number} highScore - High score to preserve
+ * @param {string} difficulty - Difficulty level to preserve
  */
-export function resetGame(highScore = 0) {
-  return createInitialState(highScore);
+export function resetGame(highScore = 0, difficulty = Difficulty.MEDIUM) {
+  return createInitialState(highScore, difficulty);
+}
+
+/**
+ * Sets the difficulty level.
+ * @param {object} state - Current game state
+ * @param {string} difficulty - New difficulty level
+ * @returns {object} - Updated game state
+ */
+export function setDifficulty(state, difficulty) {
+  return {
+    ...state,
+    difficulty,
+    // Recreate ghosts with new difficulty settings
+    ghosts: createAllGhosts(difficulty),
+  };
 }
 
 /**
  * Advances to the next level.
- * Resets maze/dots/ghosts/fruit while preserving score/lives/highScore/gameMode.
+ * Resets maze/dots/ghosts/fruit while preserving score/lives/highScore/gameMode/difficulty.
  * If already at MAX_LEVEL, sets status to GAME_COMPLETE instead.
  *
  * @param {object} state - Current game state
@@ -554,8 +578,8 @@ export function nextLevel(state) {
       y: TILE_SIZE * 5.5,
       direction: Direction.LEFT,
     },
-    // Reset ghosts
-    ghosts: createAllGhosts(),
+    // Reset ghosts with current difficulty
+    ghosts: createAllGhosts(state.difficulty),
     globalMode: GhostMode.SCATTER,
     modeTimer: 0,
     ghostsVulnerable: false,
@@ -565,7 +589,7 @@ export function nextLevel(state) {
     // Reset fruit
     fruit: createInitialFruitState(),
     deathAnimationTimer: 0,
-    // Preserved: score, lives, highScore, gameMode, player2Score, player2Lives
+    // Preserved: score, lives, highScore, gameMode, player2Score, player2Lives, difficulty
   };
 }
 
@@ -616,5 +640,5 @@ export function eatGhost(state) {
   };
 }
 
-// Re-export TILE_SIZE, Direction, and GhostMode for components
-export { TILE_SIZE, Direction, GhostMode };
+// Re-export TILE_SIZE, Direction, GhostMode, and Difficulty for components
+export { TILE_SIZE, Direction, GhostMode, Difficulty };

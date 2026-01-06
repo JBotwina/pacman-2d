@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, userEvent, resetGameStore, getGameStoreState } from '../test/test-utils.jsx';
-import { GameStatus, GameMode } from '../store/gameStore.js';
+import { GameStatus, GameMode, Difficulty } from '../store/gameStore.js';
 import ModeSelectScreen from './ModeSelectScreen.jsx';
 
 describe('ModeSelectScreen', () => {
@@ -164,7 +164,8 @@ describe('ModeSelectScreen', () => {
       render(<ModeSelectScreen />);
 
       const buttons = screen.getAllByRole('button');
-      expect(buttons.length).toBe(2);
+      // 3 difficulty buttons + 2 mode buttons = 5 total
+      expect(buttons.length).toBe(5);
       buttons.forEach(button => {
         expect(button).not.toHaveAttribute('tabindex', '-1');
       });
@@ -197,11 +198,13 @@ describe('ModeSelectScreen', () => {
   // Structure Tests
   // ============================================
   describe('Structure', () => {
-    it('renders exactly two mode buttons', () => {
-      render(<ModeSelectScreen />);
+    it('renders two mode buttons and three difficulty buttons', () => {
+      const { container } = render(<ModeSelectScreen />);
 
-      const buttons = screen.getAllByRole('button');
-      expect(buttons).toHaveLength(2);
+      const modeButtons = container.querySelectorAll('.mode-button');
+      const difficultyButtons = container.querySelectorAll('.difficulty-button');
+      expect(modeButtons).toHaveLength(2);
+      expect(difficultyButtons).toHaveLength(3);
     });
 
     it('renders headings in correct hierarchy', () => {
@@ -212,6 +215,71 @@ describe('ModeSelectScreen', () => {
 
       expect(h1).toHaveTextContent(/PAC-MAN/i);
       expect(h2).toHaveTextContent(/SELECT MODE/i);
+    });
+  });
+
+  // ============================================
+  // Difficulty Tests
+  // ============================================
+  describe('Difficulty Selection', () => {
+    it('renders difficulty header', () => {
+      render(<ModeSelectScreen />);
+
+      expect(screen.getByText(/DIFFICULTY/i)).toBeInTheDocument();
+    });
+
+    it('renders Easy, Medium, and Hard difficulty buttons', () => {
+      render(<ModeSelectScreen />);
+
+      expect(screen.getByRole('button', { name: /Easy/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Medium/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Hard/i })).toBeInTheDocument();
+    });
+
+    it('defaults to Medium difficulty', () => {
+      const { container } = render(<ModeSelectScreen />);
+
+      const selectedButton = container.querySelector('.difficulty-button.selected');
+      expect(selectedButton).toHaveTextContent(/Medium/i);
+    });
+
+    it('updates difficulty when clicking Easy button', async () => {
+      const user = userEvent.setup();
+      render(<ModeSelectScreen />);
+
+      const easyButton = screen.getByRole('button', { name: /Easy/i });
+      await user.click(easyButton);
+
+      const state = getGameStoreState();
+      expect(state.difficulty).toBe(Difficulty.EASY);
+    });
+
+    it('updates difficulty when clicking Hard button', async () => {
+      const user = userEvent.setup();
+      render(<ModeSelectScreen />);
+
+      const hardButton = screen.getByRole('button', { name: /Hard/i });
+      await user.click(hardButton);
+
+      const state = getGameStoreState();
+      expect(state.difficulty).toBe(Difficulty.HARD);
+    });
+
+    it('shows difficulty description', () => {
+      render(<ModeSelectScreen />);
+
+      // Default is Medium, so show Medium description
+      expect(screen.getByText(/Balanced challenge/i)).toBeInTheDocument();
+    });
+
+    it('updates description when difficulty changes', async () => {
+      const user = userEvent.setup();
+      render(<ModeSelectScreen />);
+
+      const easyButton = screen.getByRole('button', { name: /Easy/i });
+      await user.click(easyButton);
+
+      expect(screen.getByText(/Slower ghosts/i)).toBeInTheDocument();
     });
   });
 });

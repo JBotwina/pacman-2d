@@ -11,6 +11,7 @@ import {
   resumeGame as resumeGamePure,
   resetGame as resetGamePure,
   setGameMode as setGameModePure,
+  setDifficulty as setDifficultyPure,
   updatePlayerPosition as updatePlayerPositionPure,
   updatePlayer2Position as updatePlayer2PositionPure,
   updateGameState,
@@ -18,6 +19,7 @@ import {
   nextLevel as nextLevelPure,
   GameStatus,
   MAX_LEVEL,
+  Difficulty,
 } from '../game/GameState.js';
 
 // localStorage key for high score persistence
@@ -60,9 +62,9 @@ export const useGameStore = create((set) => ({
   resumeGame: () => set((state) => resumeGamePure(state)),
 
   /**
-   * Resets the game to initial state, preserving high score.
+   * Resets the game to initial state, preserving high score and difficulty.
    */
-  resetGame: () => set((state) => resetGamePure(state.highScore)),
+  resetGame: () => set((state) => resetGamePure(state.highScore, state.difficulty)),
 
   /**
    * Advances to the next level.
@@ -80,6 +82,12 @@ export const useGameStore = create((set) => ({
    * @param {string} mode - GameMode.SINGLE_PLAYER or GameMode.TWO_PLAYER
    */
   setGameMode: (mode) => set((state) => setGameModePure(state, mode)),
+
+  /**
+   * Sets the difficulty level.
+   * @param {string} difficulty - Difficulty.EASY, MEDIUM, or HARD
+   */
+  setDifficulty: (difficulty) => set((state) => setDifficultyPure(state, difficulty)),
 
   // ============================================
   // Player Position Actions
@@ -124,4 +132,4 @@ export const useGameStore = create((set) => ({
 }));
 
 // Re-export constants for convenience
-export { GameStatus, GameMode, MAX_LEVEL } from '../game/GameState.js';
+export { GameStatus, GameMode, MAX_LEVEL, Difficulty } from '../game/GameState.js';

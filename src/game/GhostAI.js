@@ -9,6 +9,15 @@
 
 import { TILE_SIZE } from './Dots.js';
 import { isWalkableTile, pixelToTile } from './Collision.js';
+import {
+  Difficulty,
+  getDifficultySettings,
+  getGhostSpeed,
+  getFrightenedSpeed,
+  getEatenSpeed,
+  getReleaseDelayMultiplier,
+  getClydeShyDistance,
+} from './DifficultyConfig.js';
 
 /**
  * Ghost names and their properties.
@@ -97,19 +106,8 @@ function getNormalizedDirection(dx, dy) {
 }
 
 /**
- * Release delays for each ghost (ms after game start).
- * Aggressive: faster ghost releases to apply pressure early.
- */
-const GHOST_RELEASE_DELAYS = {
-  [GhostType.BLINKY]: 0,      // Blinky starts immediately
-  [GhostType.PINKY]: 1500,    // 1.5 seconds (was 2s)
-  [GhostType.INKY]: 3000,     // 3 seconds (was 4s)
-  [GhostType.CLYDE]: 4500,    // 4.5 seconds (was 6s)
-};
-
-/**
  * Mode timing constants (milliseconds).
- * Very aggressive: minimal scatter, extended chase
+ * These are the default timings, overridden by difficulty settings.
  */
 export const MODE_TIMINGS = {
   scatter: 1500,    // 1.5 seconds of scatter (minimal breathing room)
@@ -117,12 +115,12 @@ export const MODE_TIMINGS = {
 };
 
 /**
- * Ghost speed in pixels per millisecond.
- * Aggressive: faster ghosts for more challenging gameplay.
+ * Default ghost speeds (used when difficulty not specified).
+ * These are overridden by difficulty settings at runtime.
  */
-const GHOST_SPEED = 0.16;
-const FRIGHTENED_SPEED = 0.07;
-const EATEN_SPEED = 0.28;
+const DEFAULT_GHOST_SPEED = 0.16;
+const DEFAULT_FRIGHTENED_SPEED = 0.07;
+const DEFAULT_EATEN_SPEED = 0.28;
 
 /**
  * Speed for bouncing in ghost house (slower than normal movement).
@@ -130,13 +128,27 @@ const EATEN_SPEED = 0.28;
 const IN_HOUSE_SPEED = 0.06;
 
 /**
+ * Base release delays (will be multiplied by difficulty multiplier).
+ */
+const BASE_RELEASE_DELAYS = {
+  [GhostType.BLINKY]: 0,
+  [GhostType.PINKY]: 1500,
+  [GhostType.INKY]: 3000,
+  [GhostType.CLYDE]: 4500,
+};
+
+/**
  * Creates a ghost with initial state.
  * @param {string} type - Ghost type (blinky, pinky, inky, clyde)
+ * @param {string} difficulty - Difficulty level (defaults to medium)
  * @returns {object} Ghost state object
  */
-export function createGhost(type) {
+export function createGhost(type, difficulty = Difficulty.MEDIUM) {
   const startPos = GHOST_START_POSITIONS[type] || GHOST_START_POSITIONS[GhostType.BLINKY];
-  const releaseDelay = GHOST_RELEASE_DELAYS[type] || 0;
+  const baseDelay = BASE_RELEASE_DELAYS[type] || 0;
+  const releaseMultiplier = getReleaseDelayMultiplier(difficulty);
+  const releaseDelay = Math.round(baseDelay * releaseMultiplier);
+  const ghostSpeed = getGhostSpeed(difficulty);
 
   // Each ghost starts bouncing in a different direction for visual variety
   const bounceDirections = {
@@ -155,7 +167,8 @@ export function createGhost(type) {
     mode: GhostMode.IN_HOUSE,
     previousMode: GhostMode.SCATTER,
     targetTile: { tileX: 0, tileY: 0 },
-    speed: GHOST_SPEED,
+    speed: ghostSpeed,
+    difficulty, // Store difficulty for speed calculations
     timeInHouse: 0,
     releaseDelay,
     isExiting: false, // True when ghost is moving toward exit
@@ -164,14 +177,15 @@ export function createGhost(type) {
 
 /**
  * Creates all four ghosts.
+ * @param {string} difficulty - Difficulty level (defaults to medium)
  * @returns {object} Object with all ghost states keyed by type
  */
-export function createAllGhosts() {
+export function createAllGhosts(difficulty = Difficulty.MEDIUM) {
   return {
-    [GhostType.BLINKY]: createGhost(GhostType.BLINKY),
-    [GhostType.PINKY]: createGhost(GhostType.PINKY),
-    [GhostType.INKY]: createGhost(GhostType.INKY),
-    [GhostType.CLYDE]: createGhost(GhostType.CLYDE),
+    [GhostType.BLINKY]: createGhost(GhostType.BLINKY, difficulty),
+    [GhostType.PINKY]: createGhost(GhostType.PINKY, difficulty),
+    [GhostType.INKY]: createGhost(GhostType.INKY, difficulty),
+    [GhostType.CLYDE]: createGhost(GhostType.CLYDE, difficulty),
   };
 }
 
@@ -299,23 +313,25 @@ export function calculateInkyTarget(playerPos, playerDir, blinkyPos) {
 
 /**
  * Calculates Clyde's target tile (shy/wandering).
- * Clyde chases Pac-Man when more than 8 tiles away,
+ * Clyde chases Pac-Man when further than the shy distance,
  * but retreats to his scatter corner when closer.
  * @param {object} playerPos - Player position {x, y}
  * @param {object} clydePos - Clyde's position {x, y}
+ * @param {string} difficulty - Difficulty level (affects shy distance)
  * @returns {object} Target tile {tileX, tileY}
  */
-export function calculateClydeTarget(playerPos, clydePos) {
+export function calculateClydeTarget(playerPos, clydePos, difficulty = Difficulty.MEDIUM) {
   const playerTile = pixelToTile(playerPos.x, playerPos.y);
   const clydeTile = pixelToTile(clydePos.x, clydePos.y);
+  const shyDistance = getClydeShyDistance(difficulty);
 
   const distance = Math.sqrt(distanceSquared(
     clydeTile.tileX, clydeTile.tileY,
     playerTile.tileX, playerTile.tileY
   ));
 
-  // If more than 4 tiles away, chase directly (reduced from 8 for max aggression)
-  if (distance > 4) {
+  // If more than shy distance away, chase directly
+  if (distance > shyDistance) {
     return playerTile;
   }
 
@@ -386,7 +402,7 @@ export function getGhostTarget(ghost, player1Pos, player1Dir, player2Pos, player
     }
 
     case GhostType.CLYDE:
-      return calculateClydeTarget(targetPlayer, ghost);
+      return calculateClydeTarget(targetPlayer, ghost, ghost.difficulty);
 
     default:
       return calculateBlinkyTarget(targetPlayer);
@@ -581,12 +597,12 @@ export function updateGhost(ghost, maze, player1Pos, player1Dir, player2Pos, pla
     }
   }
 
-  // Determine speed based on mode
+  // Determine speed based on mode and difficulty
   let speed = updatedGhost.speed;
   if (updatedGhost.mode === GhostMode.FRIGHTENED) {
-    speed = FRIGHTENED_SPEED;
+    speed = getFrightenedSpeed(updatedGhost.difficulty);
   } else if (updatedGhost.mode === GhostMode.EATEN) {
-    speed = EATEN_SPEED;
+    speed = getEatenSpeed(updatedGhost.difficulty);
   }
 
   // Check if at tile center (decision point)
@@ -708,7 +724,9 @@ export function setGhostMode(ghosts, mode, reverse = false) {
       ...ghost,
       previousMode: ghost.mode,
       mode,
-      speed: mode === GhostMode.FRIGHTENED ? FRIGHTENED_SPEED : GHOST_SPEED,
+      speed: mode === GhostMode.FRIGHTENED
+        ? getFrightenedSpeed(ghost.difficulty)
+        : getGhostSpeed(ghost.difficulty),
       direction: reverse ? getOppositeDirection(ghost.direction) : ghost.direction,
     };
   }
@@ -752,7 +770,7 @@ export function endFrightenedMode(ghosts) {
       updatedGhosts[type] = {
         ...ghost,
         mode: ghost.previousMode || GhostMode.CHASE,
-        speed: GHOST_SPEED,
+        speed: getGhostSpeed(ghost.difficulty),
       };
     } else {
       updatedGhosts[type] = ghost;
