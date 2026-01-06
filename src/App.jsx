@@ -332,9 +332,16 @@ function App() {
       // Check if respawned (status changed from DYING to RUNNING)
       const newState = useGameStore.getState();
       if (newState.status === GameStatus.RUNNING) {
+        // Reset Player 1 movement hook
         playerMovement.setPosition(newState.player.x, newState.player.y);
         playerMovement.setDirection('right');
         setPlayerDirection('right');
+        // Reset Player 2 movement hook in 2P mode
+        if (newState.gameMode === GameMode.TWO_PLAYER) {
+          player2Movement.setPosition(newState.player2.x, newState.player2.y);
+          player2Movement.setDirection('left');
+          setPlayer2Direction('left');
+        }
       }
       return;
     }
