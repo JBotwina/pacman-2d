@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useGameLoop } from './hooks/useGameLoop';
 import { usePlayerMovement } from './hooks/usePlayerMovement';
 import { useSoundManager } from './hooks/useSoundManager';
+import { useTouchControls, isTouchDevice } from './hooks/useTouchControls';
 import { useGameStore, GameStatus, GameMode } from './store';
 import {
   TILE_SIZE,
@@ -19,8 +20,10 @@ import PauseOverlay from './components/PauseOverlay';
 import GameOverScreen from './components/GameOverScreen';
 import LevelCompleteScreen from './components/LevelCompleteScreen';
 import GameCompleteScreen from './components/GameCompleteScreen';
+import VirtualDpad from './components/VirtualDpad';
 import './App.css';
 import './components/Menu.css';
+import './components/VirtualDpad.css';
 
 const PLAYER_SPEED = 4; // tiles per second for grid-based movement
 
@@ -77,13 +80,21 @@ function App() {
 
   const [playerDirection, setPlayerDirection] = useState('right');
   const [player2Direction, setPlayer2Direction] = useState('left');
+  const [showTouchControls] = useState(() => isTouchDevice());
   const canvasRef = useRef(null);
+  const gameAreaRef = useRef(null);
   const keysRef = useRef({});
   const playerMovement = usePlayerMovement({ speed: PLAYER_SPEED });
   const player2Movement = usePlayerMovement({ speed: PLAYER_SPEED });
 
   // Sound manager for game audio
   const sounds = useSoundManager();
+
+  // Touch controls for mobile devices
+  const touchControls = useTouchControls({
+    containerRef: gameAreaRef,
+    enabled: showTouchControls && gameState.status === GameStatus.RUNNING,
+  });
 
   // Track previous state for sound triggering
   const prevStateRef = useRef({
@@ -286,15 +297,20 @@ function App() {
     };
   }, [playerMovement, player2Movement, pauseGame, resumeGame, startGame, resetGame, nextLevel, setGameMode, sounds]);
 
-  // Get current input direction from S/D/F/E keys for Player 1
+  // Get current input direction from S/D/F/E keys or touch controls for Player 1
   const getInputDirection = useCallback(() => {
+    // Check touch/D-pad direction first (mobile)
+    if (touchControls.direction) {
+      return touchControls.direction;
+    }
+    // Fall back to keyboard
     const keys = keysRef.current;
     if (keys['e'] || keys['E']) return 'up';
     if (keys['d'] || keys['D']) return 'down';
     if (keys['s'] || keys['S']) return 'left';
     if (keys['f'] || keys['F']) return 'right';
     return null;
-  }, []);
+  }, [touchControls.direction]);
 
   // Get current input direction from IJKL keys for Player 2
   const getPlayer2InputDirection = useCallback(() => {
@@ -720,7 +736,7 @@ function App() {
         <ScoreDisplay />
       )}
 
-      <div className="game-area">
+      <div className="game-area" ref={gameAreaRef}>
         <canvas
           ref={canvasRef}
           width={canvasWidth}
@@ -760,6 +776,25 @@ function App() {
             ? 'P1: SDFE | P2: IJKL | ESC: Pause'
             : 'SDFE to move | ESC: Pause'}
         </div>
+      )}
+
+      {/* Mobile touch controls */}
+      {showTouchControls && gameState.status === GameStatus.RUNNING && (
+        <>
+          <VirtualDpad
+            onDirectionPress={touchControls.handleDpadPress}
+            onDirectionRelease={touchControls.handleDpadRelease}
+          />
+          <div className="mobile-action-buttons">
+            <button
+              className="mobile-action-button pause-button"
+              onClick={pauseGame}
+              aria-label="Pause game"
+            >
+              ❚❚
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

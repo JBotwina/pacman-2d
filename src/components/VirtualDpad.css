@@ -1,0 +1,182 @@
+/* Virtual D-pad for mobile touch controls */
+.virtual-dpad {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 1000;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.dpad-row {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.dpad-middle {
+  gap: 4px;
+}
+
+.dpad-button {
+  width: 56px;
+  height: 56px;
+  border: 2px solid var(--neon-blue, #2121de);
+  border-radius: 8px;
+  background: rgba(10, 10, 26, 0.9);
+  color: var(--neon-blue-dim, #4a4aff);
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  box-shadow:
+    0 0 10px rgba(33, 33, 222, 0.3),
+    inset 0 0 5px rgba(33, 33, 222, 0.1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dpad-button:active,
+.dpad-button:focus {
+  background: rgba(33, 33, 222, 0.4);
+  border-color: var(--neon-cyan, #00ffff);
+  color: var(--neon-cyan, #00ffff);
+  box-shadow:
+    0 0 20px rgba(0, 255, 255, 0.5),
+    inset 0 0 10px rgba(0, 255, 255, 0.2);
+  transform: scale(0.95);
+  outline: none;
+}
+
+.dpad-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.dpad-center {
+  width: 56px;
+  height: 56px;
+  background: rgba(10, 10, 26, 0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(33, 33, 222, 0.3);
+}
+
+.dpad-arrow {
+  line-height: 1;
+  text-shadow: 0 0 8px currentColor;
+}
+
+/* Mobile action buttons (pause, etc.) */
+.mobile-action-buttons {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 1000;
+}
+
+.mobile-action-button {
+  width: 60px;
+  height: 60px;
+  border: 2px solid var(--neon-yellow, #ffff00);
+  border-radius: 50%;
+  background: rgba(10, 10, 26, 0.9);
+  color: var(--neon-yellow, #ffff00);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  box-shadow:
+    0 0 10px rgba(255, 255, 0, 0.3),
+    inset 0 0 5px rgba(255, 255, 0, 0.1);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.mobile-action-button:active {
+  background: rgba(255, 255, 0, 0.3);
+  transform: scale(0.95);
+  box-shadow:
+    0 0 20px rgba(255, 255, 0, 0.5),
+    inset 0 0 10px rgba(255, 255, 0, 0.2);
+}
+
+.mobile-action-button.pause-button {
+  font-size: 20px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .virtual-dpad {
+    bottom: 15px;
+    left: 15px;
+  }
+
+  .dpad-button {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+
+  .dpad-center {
+    width: 48px;
+    height: 48px;
+  }
+
+  .mobile-action-buttons {
+    bottom: 15px;
+    right: 15px;
+  }
+
+  .mobile-action-button {
+    width: 50px;
+    height: 50px;
+    font-size: 8px;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  .virtual-dpad {
+    bottom: 10px;
+    left: 10px;
+    transform: scale(0.8);
+    transform-origin: bottom left;
+  }
+
+  .mobile-action-buttons {
+    bottom: 10px;
+    right: 10px;
+    transform: scale(0.8);
+    transform-origin: bottom right;
+  }
+}
+
+/* Hide on non-touch devices / large screens */
+@media (hover: hover) and (pointer: fine) {
+  .virtual-dpad,
+  .mobile-action-buttons {
+    display: none;
+  }
+}
+
+/* Show on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .virtual-dpad,
+  .mobile-action-buttons {
+    display: flex;
+  }
+}
