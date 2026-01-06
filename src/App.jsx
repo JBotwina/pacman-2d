@@ -552,8 +552,12 @@ function App() {
       }
     }
 
-    // Draw ghosts with neon glow (hide during death animation)
-    if (gameState.status !== GameStatus.DYING) {
+    // Draw ghosts with neon glow
+    // In 2P mode, show ghosts during DYING so surviving player can see them
+    // Only fully hide ghosts on GAME_OVER (or in 1P mode during death animation)
+    const hideGhosts = gameState.status === GameStatus.GAME_OVER ||
+      (gameState.status === GameStatus.DYING && gameState.gameMode !== GameMode.TWO_PLAYER);
+    if (!hideGhosts) {
       for (const ghostType of Object.keys(gameState.ghosts)) {
         const ghost = gameState.ghosts[ghostType];
         const gx = ghost.x;

@@ -163,6 +163,24 @@ export function updateDeathAnimation(state, deltaTime) {
 
   const newTimer = Math.max(0, state.deathAnimationTimer - deltaTime);
 
+  // In 2P mode, update ghosts so they keep chasing the surviving player
+  let updatedGhosts = state.ghosts;
+  if (state.gameMode === GameMode.TWO_PLAYER) {
+    const globalMode = state.ghostsVulnerable ? GhostMode.FRIGHTENED : GhostMode.CHASE;
+    const player2Pos = state.player2;
+    const player2Dir = state.player2.direction;
+    updatedGhosts = updateAllGhosts(
+      state.ghosts,
+      state.maze,
+      state.player,
+      state.player.direction,
+      player2Pos,
+      player2Dir,
+      deltaTime,
+      globalMode
+    );
+  }
+
   if (newTimer <= 0) {
     // Death animation complete
     const dyingPlayer = state.dyingPlayer || 1; // Default to P1 for backwards compatibility
@@ -173,13 +191,14 @@ export function updateDeathAnimation(state, deltaTime) {
       if (state.lives <= 0 && state.player2Lives <= 0) {
         return {
           ...state,
+          ghosts: updatedGhosts,
           status: GameStatus.GAME_OVER,
           deathAnimationTimer: 0,
           dyingPlayer: null,
         };
       } else {
         // Respawn Player 2 with invincibility
-        const respawnedState = respawnPlayer(state, 2);
+        const respawnedState = respawnPlayer({ ...state, ghosts: updatedGhosts }, 2);
         return {
           ...respawnedState,
           status: GameStatus.RUNNING,
@@ -197,13 +216,14 @@ export function updateDeathAnimation(state, deltaTime) {
       if (isGameOver) {
         return {
           ...state,
+          ghosts: updatedGhosts,
           status: GameStatus.GAME_OVER,
           deathAnimationTimer: 0,
           dyingPlayer: null,
         };
       } else {
         // Respawn Player 1 with invincibility
-        const respawnedState = respawnPlayer(state, 1);
+        const respawnedState = respawnPlayer({ ...state, ghosts: updatedGhosts }, 1);
         return {
           ...respawnedState,
           status: GameStatus.RUNNING,
@@ -216,6 +236,7 @@ export function updateDeathAnimation(state, deltaTime) {
 
   return {
     ...state,
+    ghosts: updatedGhosts,
     deathAnimationTimer: newTimer,
   };
 }
