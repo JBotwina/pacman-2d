@@ -328,16 +328,50 @@ function App() {
 
     // Handle death animation
     if (state.status === GameStatus.DYING) {
+      // In 2P mode, continue updating the surviving player's movement
+      if (state.gameMode === GameMode.TWO_PLAYER) {
+        if (state.dyingPlayer === 1) {
+          // P1 is dying, keep P2 moving
+          const player2Input = getPlayer2InputDirection();
+          const player2State = player2Movement.update(state.maze, deltaTime, player2Input);
+          setPlayer2Direction(player2State.direction);
+          let direction2Obj = state.player2.direction;
+          switch (player2State.direction) {
+            case 'up': direction2Obj = Direction.UP; break;
+            case 'down': direction2Obj = Direction.DOWN; break;
+            case 'left': direction2Obj = Direction.LEFT; break;
+            case 'right': direction2Obj = Direction.RIGHT; break;
+            default: break;
+          }
+          updatePlayer2Position(player2State.x, player2State.y, direction2Obj);
+        } else if (state.dyingPlayer === 2) {
+          // P2 is dying, keep P1 moving
+          const inputDirection = getInputDirection();
+          const playerState = playerMovement.update(state.maze, deltaTime, inputDirection);
+          setPlayerDirection(playerState.direction);
+          let directionObj = state.player.direction;
+          switch (playerState.direction) {
+            case 'up': directionObj = Direction.UP; break;
+            case 'down': directionObj = Direction.DOWN; break;
+            case 'left': directionObj = Direction.LEFT; break;
+            case 'right': directionObj = Direction.RIGHT; break;
+            default: break;
+          }
+          updatePlayerPosition(playerState.x, playerState.y, directionObj);
+        }
+      }
+
       tick(deltaTime);
+
       // Check if respawned (status changed from DYING to RUNNING)
       const newState = useGameStore.getState();
       if (newState.status === GameStatus.RUNNING) {
-        // Reset Player 1 movement hook
-        playerMovement.setPosition(newState.player.x, newState.player.y);
-        playerMovement.setDirection('right');
-        setPlayerDirection('right');
-        // Reset Player 2 movement hook in 2P mode
-        if (newState.gameMode === GameMode.TWO_PLAYER) {
+        // Reset the respawned player's movement hook to match their new position
+        if (state.dyingPlayer === 1 || state.gameMode !== GameMode.TWO_PLAYER) {
+          playerMovement.setPosition(newState.player.x, newState.player.y);
+          playerMovement.setDirection('right');
+          setPlayerDirection('right');
+        } else if (state.dyingPlayer === 2) {
           player2Movement.setPosition(newState.player2.x, newState.player2.y);
           player2Movement.setDirection('left');
           setPlayer2Direction('left');

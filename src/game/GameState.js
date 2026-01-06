@@ -36,7 +36,6 @@ import {
 } from './RandomFruit.js';
 import {
   Difficulty,
-  getDifficultySettings,
   getModeTimings,
 } from './DifficultyConfig.js';
 import {

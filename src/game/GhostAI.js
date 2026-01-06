@@ -11,7 +11,6 @@ import { TILE_SIZE } from './Dots.js';
 import { isWalkableTile, pixelToTile } from './Collision.js';
 import {
   Difficulty,
-  getDifficultySettings,
   getGhostSpeed,
   getFrightenedSpeed,
   getEatenSpeed,
