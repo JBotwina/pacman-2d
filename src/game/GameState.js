@@ -386,7 +386,8 @@ export function updateGameState(state, deltaTime) {
   }
 
   // Check Player 2 collision with ghosts (in 2P mode)
-  if (state.gameMode === GameMode.TWO_PLAYER && finalStatus !== GameStatus.DYING) {
+  // Always check P2 collision independently of P1's state
+  if (state.gameMode === GameMode.TWO_PLAYER) {
     const collision2 = checkGhostCollision(updatedGhosts, state.player2.x, state.player2.y);
 
     if (collision2.collision) {
@@ -399,11 +400,14 @@ export function updateGameState(state, deltaTime) {
         // Start respawn timer for eaten ghost
         ghostRespawnTimers[collision2.ghostType] = GHOST_RESPAWN_DELAY;
       } else {
-        // Ghost catches player 2 - start death animation
+        // Ghost catches player 2 - decrement lives
         player2Lives -= 1;
-        finalStatus = GameStatus.DYING;
-        deathAnimationTimer = DEATH_ANIMATION_DURATION;
-        dyingPlayer = 2;
+        // Only start death animation if not already dying (P1 takes priority)
+        if (finalStatus !== GameStatus.DYING) {
+          finalStatus = GameStatus.DYING;
+          deathAnimationTimer = DEATH_ANIMATION_DURATION;
+          dyingPlayer = 2;
+        }
       }
     }
   }
